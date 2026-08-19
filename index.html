@@ -577,7 +577,9 @@ function repairTruncatedJSON(txt) {
 }
 
 function safeJsonParse(content) {
-  let txt = (content || '').trim();
+  // 兼容两种入参：字符串 或 LLM result 对象（自动取 .content）
+  const raw = typeof content === 'string' ? content : (content?.content ?? '');
+  const txt = (raw || '').trim();
   const m = txt.match(/```(?:json)?\s*([\s\S]+?)\s*```/);
   if (m) txt = m[1];
   try {
@@ -752,7 +754,7 @@ async function runA1() {
 
     let plan;
     const __r1 = safeJsonParse(planResult);
-        if (__r.ok) { plan = __r.data; }
+        if (__r1.ok) { plan = __r1.data; }
         else { plan = {  strategy: '(解析失败，继续)', reasoning: ''  }; }
 
     // 展示规划结果
@@ -836,7 +838,7 @@ async function runA1() {
 
     let selectionData;
     const __r2 = safeJsonParse(selectResult);
-        if (__r.ok) { selectionData = __r.data; }
+        if (__r2.ok) { selectionData = __r2.data; }
         else { selectionData = {  selected_idx: 0, reasoning: '(解析失败，默认选第一)'  }; }
 
     const selIdx = Math.min(selectionData.selected_idx || 0, top5.length - 1);
@@ -902,7 +904,7 @@ async function runA1() {
       });
       appendLive('a1Live', '\n\n[' + fmtTime(er.elapsed) + ' · ' + fmtTokens(er.usage.total_tokens) + ' tokens]\n');
       const __r3 = safeJsonParse(er);
-        if (__r.ok) return __r.data;
+        if (__r3.ok) return __r3.data;
         return {  overall: 80, verdict: 'pass', issues: [], suggestions: []  };
     }
 
@@ -1041,7 +1043,7 @@ async function runA2() {
 
     let plan2;
     const __r4 = safeJsonParse(plan2Result);
-        if (__r.ok) { plan2 = __r.data; }
+        if (__r4.ok) { plan2 = __r4.data; }
         else { plan2 = {  strategy: '(解析失败，继续)'  }; }
     setStep('a2Flow', 'plan', 'done', '策略已定');
     appendLive('a2Live', '\n[策略] ' + escapeHtml(plan2.strategy || '') + ' | 分析重点: ' + escapeHtml(plan2.analysis_focus || '') + '\n\n');
@@ -1062,8 +1064,8 @@ async function runA2() {
 
     let analysis;
     const __r5 = safeJsonParse(a1);
-        if (!__r.ok) throw new Error('拆解  JSON 解析失败：' + __r.error + ' (原文 ' + __r.rawLen + ' 字)');
-        analysis = __r.data;
+        if (!__r5.ok) throw new Error('拆解  JSON 解析失败：' + __r5.error + ' (原文 ' + __r5.rawLen + ' 字)');
+        analysis = __r5.data;
     setStep('a2Flow', 'analyze', 'done', '完成');
 
     setStep('a2Flow', 'driving', 'active', '找撬动要素…');
@@ -1097,8 +1099,8 @@ async function runA2() {
 
     let remixRes;
     const __r6 = safeJsonParse(a2);
-        if (!__r.ok) throw new Error('二创  JSON 解析失败：' + __r.error + ' (原文 ' + __r.rawLen + ' 字)');
-        remixRes = __r.data;
+        if (!__r6.ok) throw new Error('二创  JSON 解析失败：' + __r6.error + ' (原文 ' + __r6.rawLen + ' 字)');
+        remixRes = __r6.data;
     setStep('a2Flow', 'remix', 'done', (remixRes.remixes || []).length + ' 条');
 
     // 算相似度
@@ -1128,7 +1130,7 @@ async function runA2() {
       });
       appendLive('a2Live', '\n\n[' + fmtTime(er.elapsed) + ' · ' + fmtTokens(er.usage.total_tokens) + ' tokens]\n');
       const __r7 = safeJsonParse(er);
-        if (__r.ok) return __r.data;
+        if (__r7.ok) return __r7.data;
         return {  overall_score: 75, verdict: 'pass', per_remix: [], suggestions: []  };
     }
 
