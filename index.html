@@ -610,20 +610,20 @@ async function runA1() {
     });
     logLine('a1Log', '开始抓取多源热点…', 'info');
 
-    const fetchResult = await Fetchers.fetchAll({
+    let fetchResult;
+    fetchResult = await Fetchers.fetchAll({
       onProgress: (src, status) => {
         if (src === '__proxy__') {
           if (status === 'probing') $('a1ProxyInfo').textContent = '正在寻找可用代理…';
-          else if (status === 'ready') $('a1ProxyInfo').textContent = '代理已就绪：' + fetchResult?.proxy || '';
+          else if (status === 'ready') $('a1ProxyInfo').textContent = '代理已就绪，抓取中…';
           else $('a1ProxyInfo').textContent = '⚠️ 代理未找到，将尝试各源直连（可能被 CORS 拦）';
           return;
         }
-        const map = { loading: ['等待…', 'loading'], done: ['✅', 'done'], fail: ['❌ 失败', 'fail'] };
         const el = $('srcstat_' + src);
         if (!el) return;
         if (status === 'loading') { el.textContent = '抓取中…'; el.className = 'stat loading'; }
         else if (status === 'done') {
-          const c = fetchResult.sources[src]?.count || 0;
+          const c = fetchResult?.sources?.[src]?.count || 0;
           el.textContent = '✅ ' + c + ' 条'; el.className = 'stat done';
         } else {
           el.textContent = '❌ 失败'; el.className = 'stat fail';
