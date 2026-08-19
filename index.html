@@ -718,14 +718,20 @@ async function runA1() {
 
     // 渲染
     $('a1ScriptCard').style.display = 'block';
+    const toTagsArr = v => {
+      if (Array.isArray(v)) return v;
+      if (typeof v === 'string') return v.split(/[,,#\s]+/).filter(Boolean);
+      return [];
+    };
+    const tagsArr = toTagsArr(script.hashtags);
     const titles = (script.title || []).map(t => escapeHtml(t));
-    const hashtags = (script.hashtags || []).map(h => '<span class="badge green">' + escapeHtml(h) + '</span>').join(' ');
+    const hashtags = tagsArr.map(h => '<span class="badge green">' + escapeHtml(h) + '</span>').join(' ');
     $('a1Script').innerHTML =
       renderDraft('3 个备选标题', titles.join('\n'), 'titles') +
       renderDraft('🎯 3 秒钩子（视觉+配音+字幕）', script.hook_3s, 'hook') +
       renderDraft('📜 30 秒分镜脚本', script.script_30s, 'script') +
       renderDraft('🖼 封面大字', script.cover_text, 'cover') +
-      '<div class="draft"><div class="label">#️⃣ 标签</div><div class="row-tags">' + hashtags + '</div>' + copyBtn('hashtags', (script.hashtags || []).map(h => h.startsWith('#') ? h : '#' + h).join(' ')) + '</div>' +
+      '<div class="draft"><div class="label">#️⃣ 标签</div><div class="row-tags">' + hashtags + '</div>' + copyBtn('hashtags', tagsArr.map(h => h.startsWith('#') ? h : '#' + h).join(' ')) + '</div>' +
       renderDraft('⏰ 发布时间', script.publish_time, 'time') +
       renderDraft('💬 CTA（互动设计）', script.cta, 'cta') +
       renderDraft('🛡 风险自查', script.risk_check, 'risk') +
@@ -762,7 +768,7 @@ function saveScriptToLib(jsonStr) {
     type: 'script',
     title: d.title,
     content: '【选题】' + d.topic + ' (' + d.source + ')\n【钩子】' + d.hook + '\n\n【脚本】\n' + d.script + '\n\n【CTA】' + d.cta,
-    tags: d.hashtags || []
+    tags: Array.isArray(d.hashtags) ? d.hashtags : (typeof d.hashtags === 'string' ? d.hashtags.split(/[,,#\s]+/).filter(Boolean) : [])
   });
   toast('已存到内容资产库');
   renderHomeKPI();
@@ -846,8 +852,14 @@ async function runA2() {
     setStep('a2Flow', 'sim', 'done', '全部 < ' + (Math.max(...remixes.map(x => x.similarity_final)) || 0) + '%');
 
     $('a2RemixCard').style.display = 'block';
+    const toTagsArr = v => {
+      if (Array.isArray(v)) return v;
+      if (typeof v === 'string') return v.split(/[,,#\s]+/).filter(Boolean);
+      return [];
+    };
     $('a2Remixes').innerHTML = remixes.map((rx, i) => {
-      const tags = (rx.hashtags || []).map(h => '<span class="badge green">' + escapeHtml(h) + '</span>').join(' ');
+      const tagList = toTagsArr(rx.hashtags);
+      const tags = tagList.map(h => '<span class="badge green">' + escapeHtml(h) + '</span>').join(' ');
       const sim = rx.similarity_final || 0;
       const simClass = sim < 20 ? 'green' : sim < 35 ? 'gold' : 'hot';
       return '<div class="card" style="margin:0 0 10px;">' +
@@ -856,7 +868,7 @@ async function runA2() {
         renderDraft('标题', rx.title, 'r' + i + 't') +
         renderDraft('🎯 3 秒钩子', rx.hook_3s, 'r' + i + 'h') +
         renderDraft('📜 30 秒脚本', rx.script_30s, 'r' + i + 's') +
-        '<div class="draft"><div class="label">#️⃣ 标签</div><div class="row-tags">' + tags + '</div>' + copyBtn('r' + i + 'tags', (rx.hashtags || []).map(h => h.startsWith('#') ? h : '#' + h).join(' ')) + '</div>' +
+        '<div class="draft"><div class="label">#️⃣ 标签</div><div class="row-tags">' + tags + '</div>' + copyBtn('r' + i + 'tags', tagList.map(h => h.startsWith('#') ? h : '#' + h).join(' ')) + '</div>' +
         renderDraft('💬 CTA', rx.cta, 'r' + i + 'c') +
         '<div class="row-tags" style="margin-top:10px;">' +
           '<button class="btn sm" onclick="saveRemixToLib(' + JSON.stringify(JSON.stringify(rx)).replace(/"/g, '&quot;') + ')">💾 入库</button>' +
@@ -891,7 +903,7 @@ function saveRemixToLib(jsonStr) {
     type: 'remix',
     title: rx.name + ' · ' + (rx.title || '').slice(0, 30),
     content: '【差异化】' + rx.change + '\n\n【标题】' + rx.title + '\n\n【钩子】' + rx.hook_3s + '\n\n【脚本】\n' + rx.script_30s + '\n\n【CTA】' + rx.cta,
-    tags: rx.hashtags || []
+    tags: Array.isArray(rx.hashtags) ? rx.hashtags : (typeof rx.hashtags === 'string' ? rx.hashtags.split(/[,,#\s]+/).filter(Boolean) : [])
   });
   toast('已入库');
   renderHomeKPI();
