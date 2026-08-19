@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#e8590c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<title>苜蓿爆款 Agent 工作台 · 真·可用</title>
+<style>
+  :root{
+    --bg:#faf7f2; --card:#ffffff; --ink:#2d2a26; --sub:#8a8378;
+    --accent:#e8590c; --accent-soft:#fff0e6; --accent-2:#2b8a3e; --green-soft:#ebfbee;
+    --line:#eee7dc; --gold:#f59f00; --gold-soft:#fff9db;
+    --red:#e03131; --red-soft:#fff5f5; --blue:#1971c2; --blue-soft:#e7f5ff;
+    --purple:#6741d9; --purple-soft:#e5dbff;
+    --radius:16px;
+    --safe-b:env(safe-area-inset-bottom,0px);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html{font-size:15px;}
+  body{font-family:"MiSans","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;padding-bottom:calc(72px + var(--safe-b));}
+  button{font-family:inherit;}
+
+  /* App Bar */
+  .appbar{position:sticky;top:0;z-index:50;background:linear-gradient(135deg,#e8590c,#f59f00);color:#fff;padding:14px 16px 12px;border-radius:0 0 20px 20px;box-shadow:0 4px 16px rgba(232,89,12,.25);}
+  .appbar .row{display:flex;align-items:center;justify-content:space-between;}
+  .appbar .brand{display:flex;align-items:center;gap:10px;}
+  .appbar .icon{width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:22px;}
+  .appbar h1{font-size:18px;letter-spacing:.5px;}
+  .appbar .sub{font-size:11px;opacity:.85;margin-top:1px;}
+  .appbar .right{display:flex;gap:8px;align-items:center;}
+  .appbar .iconbtn{width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:17px;border:none;color:#fff;cursor:pointer;}
+  .appbar .iconbtn:active{background:rgba(255,255,255,.32);}
+  .greeting{margin:10px 2px 0;font-size:12.5px;line-height:1.7;background:rgba(255,255,255,.16);border-radius:12px;padding:9px 12px;}
+  .greeting .warn{background:rgba(255,235,150,.92);color:#7d4a00;padding:6px 8px;border-radius:8px;margin-top:4px;}
+
+  main{padding:14px 12px 20px;max-width:640px;margin:0 auto;}
+  .panel{display:none;animation:fade .22s ease;}
+  .panel.active{display:block;}
+  @keyframes fade{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:12px;}
+  .card h2{font-size:15.5px;margin-bottom:12px;display:flex;align-items:center;gap:7px;}
+  .muted{color:var(--sub);font-size:11.5px;font-weight:400;}
+  .row-tags{display:flex;flex-wrap:wrap;gap:5px;}
+  .badge{font-size:10.5px;padding:3px 10px;border-radius:99px;flex-shrink:0;}
+  .badge.hot{background:var(--red-soft);color:var(--red);}
+  .badge.peer{background:var(--blue-soft);color:var(--blue);}
+  .badge.acc{background:var(--purple-soft);color:var(--purple);}
+  .badge.green{background:var(--green-soft);color:var(--accent-2);}
+  .badge.gold{background:var(--gold-soft);color:#7d6608;}
+  .badge.gray{background:#f0ebe2;color:#7a7062;}
+
+  .btn{border:none;background:var(--accent);color:#fff;padding:12px 18px;border-radius:12px;font-size:14px;transition:.2s;cursor:pointer;}
+  .btn:active{transform:scale(.97);}
+  .btn.ghost{background:var(--accent-soft);color:var(--accent);}
+  .btn.sm{padding:8px 14px;font-size:12px;border-radius:10px;}
+  .btn.block{width:100%;padding:14px;font-size:15px;font-weight:600;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+
+  /* Agent thinking flow (real LLM stages) */
+  .flow{display:flex;align-items:stretch;gap:6px;margin:10px 0 14px;overflow-x:auto;padding-bottom:4px;}
+  .flow .step{flex-shrink:0;min-width:88px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:11.5px;transition:.2s;}
+  .flow .step .ico{font-size:18px;display:block;margin-bottom:3px;}
+  .flow .step .lbl{font-weight:600;color:var(--ink);}
+  .flow .step .num{font-size:10px;color:var(--sub);}
+  .flow .step.active{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 3px rgba(232,89,12,.08);}
+  .flow .step.done{border-color:#a3d9a3;background:#ebfbee;}
+  .flow .arr{flex-shrink:0;align-self:center;color:var(--sub);font-size:14px;}
+
+  /* Source row (real fetch status) */
+  .src-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f7f2ea;}
+  .src-row:last-child{border-bottom:none;}
+  .src-row .name{font-size:13.5px;font-weight:600;}
+  .src-row .count{font-size:11px;color:var(--sub);}
+  .src-row .stat{font-size:11.5px;font-weight:600;color:var(--accent);}
+  .src-row .stat.loading{color:var(--gold);}
+  .src-row .stat.fail{color:var(--red);}
+  .src-row .stat.done{color:var(--accent-2);}
+
+  /* Topic list */
+  .topic{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:var(--card);cursor:pointer;transition:.15s;}
+  .topic:active{transform:scale(.99);}
+  .topic.top{border-color:#ffc9a3;background:#fff7ef;}
+  .topic.selected{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 3px rgba(232,89,12,.12);}
+  .topic .head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+  .topic .title{font-size:13.5px;font-weight:600;flex:1;line-height:1.5;}
+  .topic .meta{font-size:11px;color:var(--sub);margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;}
+  .topic .reason{font-size:12px;color:#5a4a3a;background:#fdf6ec;padding:6px 9px;border-radius:8px;margin-top:7px;line-height:1.6;}
+  .topic .scores{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px;}
+  .topic .scores .s{text-align:center;background:#f7f2ea;border-radius:8px;padding:4px 2px;}
+  .topic .scores .s .v{font-size:13px;font-weight:700;color:var(--accent);}
+  .topic .scores .s .l{font-size:9.5px;color:var(--sub);}
+
+  /* Draft (real LLM output) */
+  .draft{border:1px dashed #e3d9c8;background:#fdfaf5;border-radius:12px;padding:13px;margin-top:10px;}
+  .draft .label{font-size:11px;color:var(--sub);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;}
+  .draft .content{font-size:13px;line-height:1.7;white-space:pre-line;word-break:break-all;}
+  .draft h3{font-size:13.5px;margin-bottom:6px;color:var(--accent);}
+  .copy-btn{border:1px solid var(--accent);background:#fff;color:var(--accent);font-size:12px;padding:6px 16px;border-radius:99px;cursor:pointer;}
+  .copy-btn:active{background:var(--accent);color:#fff;}
+  .copy-btn.ok{background:var(--accent-2);color:#fff;border-color:var(--accent-2);}
+
+  /* Real-time LLM output */
+  .live-out{background:#1a1814;color:#e8e0d2;border-radius:12px;padding:14px;margin:10px 0;font-family:ui-monospace,Consolas,monospace;font-size:12.5px;line-height:1.7;max-height:280px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;}
+  .live-out .think{color:#b8a684;font-style:italic;}
+  .live-out .ts{color:#7a7062;font-size:10.5px;}
+
+  /* Progress log (real LLM trace) */
+  .log{max-height:240px;overflow-y:auto;background:#0f0e0b;color:#d8cfb8;border-radius:10px;padding:10px 12px;font-family:ui-monospace,Consolas,monospace;font-size:11.5px;line-height:1.6;}
+  .log .line{margin-bottom:4px;word-break:break-all;}
+  .log .line .t{color:#7a7062;margin-right:6px;}
+  .log .line.ok{color:#9ed49e;}
+  .log .line.err{color:#ff9494;}
+  .log .line.think{color:#d4b074;}
+  .log .line.info{color:#9ec3ff;}
+
+  /* Modal */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:flex-end;justify-content:center;}
+  .modal.open{display:flex;animation:fade .2s ease;}
+  .modal .sheet{background:var(--card);width:100%;max-width:640px;border-radius:20px 20px 0 0;padding:18px 16px calc(20px + var(--safe-b));max-height:88vh;overflow-y:auto;}
+  .modal h3{font-size:16px;margin-bottom:14px;}
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#5a4a3a;}
+  .field input, .field select, .field textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;background:#fdfbf7;font-family:inherit;}
+  .field textarea{resize:vertical;min-height:100px;}
+  .field .hint{font-size:11px;color:var(--sub);margin-top:3px;line-height:1.5;}
+  .modal .row-btns{display:flex;gap:8px;margin-top:14px;}
+  .modal .row-btns .btn{flex:1;}
+
+  /* Tab Bar */
+  .tabbar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 0 calc(8px + var(--safe-b));z-index:100;}
+  .tabbar .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px;border:none;background:transparent;color:var(--sub);font-size:10.5px;cursor:pointer;}
+  .tabbar .tab .ti{font-size:19px;}
+  .tabbar .tab.active{color:var(--accent);}
+
+  /* Utility */
+  .center{text-align:center;}
+  .spacer-12{height:12px;}
+  .hide{display:none !important;}
+  .inline-block{display:inline-block;}
+  .kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 8px;text-align:center;}
+  .kpi .v{font-size:18px;font-weight:700;color:var(--accent);}
+  .kpi .l{font-size:10.5px;color:var(--sub);margin-top:2px;}
+
+  /* 5-dim radar */
+  .dim5{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:10px 0;}
+  .dim5 .d{text-align:center;background:#fdf6ec;padding:8px 4px;border-radius:10px;}
+  .dim5 .d .v{font-size:17px;font-weight:700;color:var(--accent);}
+  .dim5 .d .l{font-size:10.5px;color:#6b6355;margin-top:1px;}
+
+  /* Toast */
+  .toast{position:fixed;left:50%;top:80px;transform:translateX(-50%);background:rgba(20,20,20,.92);color:#fff;padding:9px 18px;border-radius:99px;font-size:13px;z-index:300;opacity:0;transition:.25s;pointer-events:none;}
+  .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<div class="appbar">
+  <div class="row">
+    <div class="brand">
+      <div class="icon">🍳</div>
+      <div>
+        <h1>苜蓿爆款 Agent</h1>
+        <div class="sub" id="appSub">真实数据 · 真实 LLM · 可上线</div>
+      </div>
+    </div>
+    <div class="right">
+      <button class="iconbtn" id="btnLib" title="内容资产库">📚</button>
+      <button class="iconbtn" id="btnSettings" title="设置">⚙️</button>
+    </div>
+  </div>
+  <div class="greeting" id="greeting">
+    欢迎回来～先点右上角 <b>⚙️ 设置</b> 填入 DeepSeek API Key（必须），再选是否要配代理抓真实热点。
+  </div>
+</div>
+
+<main>
+  <!-- ========== Tab 0: 首页 / 说明 ========== -->
+  <section class="panel active" id="panel-home">
+    <div class="card">
+      <h2>👋 这是什么</h2>
+      <p style="font-size:13.5px;line-height:1.7;color:#4a423a;">
+        抖音美食创作者苜蓿的 <b>真·可用</b> 双 Agent 工作台，对应 AI Agent 实战题 <span class="badge hot">题2</span> <span class="badge peer">题5</span>。
+        所有数据从公开 API 真实抓取，所有评分/拆解/生成都通过 DeepSeek LLM 真实完成。
+      </p>
+      <div class="kpi-row" style="margin-top:14px;">
+        <div class="kpi"><div class="v" id="kpiHot">—</div><div class="l">已抓热点</div></div>
+        <div class="kpi"><div class="v" id="kpiLib">—</div><div class="l">内容资产</div></div>
+        <div class="kpi"><div class="v" id="kpiTrace">—</div><div class="l">LLM 调用</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>🟧 Agent 1 · 每日热点 → 爆款脚本 <span class="badge hot">题2</span></h2>
+      <p style="font-size:12.5px;color:#5a4a3a;line-height:1.7;">
+        拉取 <b>微博 / 头条 / B站 / 百度</b> 真实榜单 → 喂给 DeepSeek 按 4 维打分 →
+        选 Top1 生成可立即发布的爆款脚本（标题+钩子+正文+标签+封面+CTA+风险自查）。
+      </p>
+      <button class="btn block" style="margin-top:12px;" onclick="goTab(1)">开始跑 Agent 1 →</button>
+    </div>
+    <div class="card">
+      <h2>🟪 Agent 2 · 爆款拆解 → 差异化二创 <span class="badge hot">题5</span></h2>
+      <p style="font-size:12.5px;color:#5a4a3a;line-height:1.7;">
+        粘贴一条爆款口播/旁白 → DeepSeek 5 维拆解（钩子/饵物/停留/互动/CTA）→
+        找出真正撬动流量的底层机制 → 生成 <b>≥3 条差异化二创</b>，每条自评与原文相似度。
+      </p>
+      <button class="btn block ghost" style="margin-top:12px;" onclick="goTab(2)">开始跑 Agent 2 →</button>
+    </div>
+    <div class="card">
+      <h2>🛠 真·可用的关键</h2>
+      <ol style="font-size:12.5px;color:#5a4a3a;line-height:1.9;padding-left:18px;">
+        <li>每个评分/拆解/生成的标题都来自 <b>真实 LLM 响应</b>，不是前端拼字符串</li>
+        <li>工作流每一步显示 LLM 的真实耗时、token 用量、思考过程</li>
+        <li>API Key 存浏览器 localStorage，<b>不上传任何服务器</b></li>
+        <li>抓真实数据需要 CORS 代理，<b>自带 Node.js 30 秒可起</b>（见 README）</li>
+        <li>不配代理也能用，Agent 1 会用上次抓取的缓存 + 仍是真实 LLM 调用</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ========== Tab 1: Agent 1 ========== -->
+  <section class="panel" id="panel-a1">
+    <div class="card">
+      <h2>🟧 Agent 1 · 实时工作流</h2>
+      <div class="flow" id="a1Flow">
+        <div class="step" data-step="fetch"><span class="ico">📡</span><span class="lbl">抓取热点</span><span class="num" id="a1s1">等待</span></div><div class="arr">→</div>
+        <div class="step" data-step="score"><span class="ico">🧮</span><span class="lbl">LLM 评分</span><span class="num" id="a1s2">等待</span></div><div class="arr">→</div>
+        <div class="step" data-step="pick"><span class="ico">✋</span><span class="lbl">选 Top</span><span class="num" id="a1s3">等待</span></div><div class="arr">→</div>
+        <div class="step" data-step="gen"><span class="ico">✍️</span><span class="lbl">生成脚本</span><span class="num" id="a1s4">等待</span></div>
+      </div>
+      <button class="btn block" id="a1Run" onclick="runA1()">🚀 一键跑 Agent 1</button>
+    </div>
+
+    <div class="card" id="a1SrcCard" style="display:none;">
+      <h2>📡 多源抓取状态 <span class="muted">真实</span></h2>
+      <div id="a1Sources"></div>
+      <div class="muted center" id="a1ProxyInfo" style="margin-top:6px;"></div>
+    </div>
+
+    <div class="card" id="a1LiveCard" style="display:none;">
+      <h2>🧠 LLM 实时输出 <span class="muted">真实请求</span></h2>
+      <div class="live-out" id="a1Live"></div>
+    </div>
+
+    <div class="card" id="a1LogCard" style="display:none;">
+      <h2>📋 完整 trace <span class="muted">每一步都记</span></h2>
+      <div class="log" id="a1Log"></div>
+    </div>
+
+    <div class="card" id="a1TopicsCard" style="display:none;">
+      <h2>🧮 评分结果 <span class="muted">DeepSeek 4 维真实评分</span></h2>
+      <div id="a1Topics"></div>
+    </div>
+
+    <div class="card" id="a1ScriptCard" style="display:none;">
+      <h2>✍️ 生成的爆款脚本 <span class="muted">可发布</span></h2>
+      <div id="a1Script"></div>
+    </div>
+  </section>
+
+  <!-- ========== Tab 2: Agent 2 ========== -->
+  <section class="panel" id="panel-a2">
+    <div class="card">
+      <h2>🟪 Agent 2 · 输入爆款</h2>
+      <div class="field">
+        <label>爆款口播/旁白/脚本（直接粘贴文本）</label>
+        <textarea id="a2Input" placeholder="例：
+'你知道吗，凌晨3点的烧烤摊，才是真正的人间烟火。
+今天这5家，我全部试过了，排名最后那家千万别去。'"></textarea>
+        <div class="hint">至少 30 字。建议 ≥ 200 字，拆解更准。</div>
+      </div>
+      <div class="field">
+        <label>或者从内容资产库选一条</label>
+        <select id="a2Pick"><option value="">— 不选，自己粘贴 —</option></select>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🟪 Agent 2 · 实时工作流</h2>
+      <div class="flow" id="a2Flow">
+        <div class="step" data-step="analyze"><span class="ico">🔬</span><span class="lbl">5 维拆解</span><span class="num" id="a2s1">等待</span></div><div class="arr">→</div>
+        <div class="step" data-step="driving"><span class="ico">💡</span><span class="lbl">找撬动要素</span><span class="num" id="a2s2">等待</span></div><div class="arr">→</div>
+        <div class="step" data-step="remix"><span class="ico">🪄</span><span class="lbl">生成二创</span><span class="num" id="a2s3">等待</span></div><div class="arr">→</div>
+        <div class="step" data-step="sim"><span class="ico">🔁</span><span class="lbl">相似度</span><span class="num" id="a2s4">等待</span></div>
+      </div>
+      <button class="btn block" id="a2Run" onclick="runA2()">🚀 拆解 + 生成二创</button>
+    </div>
+
+    <div class="card" id="a2LiveCard" style="display:none;">
+      <h2>🧠 LLM 实时输出</h2>
+      <div class="live-out" id="a2Live"></div>
+    </div>
+
+    <div class="card" id="a2AnalysisCard" style="display:none;">
+      <h2>🔬 5 维拆解</h2>
+      <div id="a2Analysis"></div>
+    </div>
+
+    <div class="card" id="a2RemixCard" style="display:none;">
+      <h2>🪄 差异化二创 <span class="muted">每条都标注换的是什么、相似度</span></h2>
+      <div id="a2Remixes"></div>
+    </div>
+  </section>
+
+  <!-- ========== Tab 3: 资产库 ========== -->
+  <section class="panel" id="panel-lib">
+    <div class="card">
+      <h2>📚 内容资产库 <span class="muted" id="libCount">0 条</span></h2>
+      <div class="row-tags" style="margin-bottom:10px;">
+        <button class="btn sm ghost" onclick="exportLib()">📥 导出全部 Markdown</button>
+        <button class="btn sm" style="background:var(--red);" onclick="clearLib()">🗑 清空</button>
+      </div>
+      <div id="libList"></div>
+    </div>
+    <div class="card">
+      <h2>📊 发布追踪表 <span class="muted" id="trackCount">0 条</span></h2>
+      <div class="row-tags" style="margin-bottom:10px;">
+        <button class="btn sm ghost" onclick="exportTrack()">📥 导出追踪</button>
+      </div>
+      <div id="trackList"></div>
+    </div>
+  </section>
+</main>
+
+<!-- ========== 设置 Modal ========== -->
+<div class="modal" id="modalSettings">
+  <div class="sheet">
+    <h3>⚙️ 设置</h3>
+
+    <div class="field">
+      <label>LLM 提供方</label>
+      <select id="setProvider">
+        <option value="deepseek">DeepSeek（推荐，中文强、价格低）</option>
+        <option value="openai">OpenAI 兼容（OpenAI / 火山方舟 / 其他）</option>
+        <option value="custom">自定义端点（任意 OpenAI 协议）</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>API Key <span style="color:var(--red);">*</span></label>
+      <input type="password" id="setApiKey" placeholder="sk-...（仅存浏览器本地）">
+      <div class="hint">Key 只存 localStorage，<b>绝不上传任何服务器</b>。DeepSeek 申请：<a href="https://platform.deepseek.com" target="_blank">platform.deepseek.com</a></div>
+    </div>
+
+    <div class="field">
+      <label>Base URL</label>
+      <input id="setBaseUrl" placeholder="https://api.deepseek.com">
+    </div>
+
+    <div class="field">
+      <label>模型名</label>
+      <input id="setModel" placeholder="deepseek-chat">
+    </div>
+
+    <div class="field">
+      <label>温度（0-1，越高越发散）</label>
+      <input id="setTemp" type="number" min="0" max="2" step="0.1" value="0.7">
+    </div>
+
+    <hr style="border:none;border-top:1px dashed #e3d9c8;margin:14px 0;">
+
+    <h3 style="font-size:14px;">📡 数据抓取（CORS 代理）</h3>
+
+    <div class="field">
+      <label>代理 URL（留空则尝试公共代理）</label>
+      <input id="setProxy" placeholder="http://localhost:8088/?url=（推荐自建）">
+      <div class="hint">
+        浏览器直连微博/头条/B站会被 CORS 拦。两种方式：
+        <br>① <b>本地代理</b>：跑 <code>node proxy-example.js</code>，填 <code>http://localhost:8088/?url=</code>（30 秒搞定）
+        <br>② <b>公共代理</b>：留空自动试 corsproxy.io / allorigins 等（不一定稳）
+        <br>③ <b>Cloudflare Worker</b>：用 proxy-example.js 改 5 行就能部署
+      </div>
+    </div>
+
+    <div class="field">
+      <label>账号画像（喂给 LLM 用，可改）</label>
+      <textarea id="setProfile" style="min-height:120px;"></textarea>
+    </div>
+
+    <div class="row-btns">
+      <button class="btn ghost" onclick="closeModal('modalSettings')">取消</button>
+      <button class="btn" onclick="saveSettings()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 内容库详情 Modal ========== -->
+<div class="modal" id="modalLibDetail">
+  <div class="sheet">
+    <h3 id="libDetailTitle">详情</h3>
+    <div id="libDetailContent"></div>
+    <div class="row-btns">
+      <button class="btn ghost" onclick="closeModal('modalLibDetail')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Tab Bar ========== -->
+<nav class="tabbar">
+  <button class="tab active" data-tab="0" onclick="goTab(0)"><span class="ti">🏠</span><span>首页</span></button>
+  <button class="tab" data-tab="1" onclick="goTab(1)"><span class="ti">🟧</span><span>热点→爆款</span></button>
+  <button class="tab" data-tab="2" onclick="goTab(2)"><span class="ti">🟪</span><span>拆解→二创</span></button>
+  <button class="tab" data-tab="3" onclick="goTab(3)"><span class="ti">📚</span><span>资产库</span></button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<!-- ========== 真实模块（顺序很重要） ========== -->
+<script src="llm.js"></script>
+<script src="fetchers.js"></script>
+<script src="agents.js"></script>
+
+<script>
+/* ============================================================
+ * UI 控制层
+ * ============================================================ */
+
+const SOURCES = [
+  { id: 'toutiao', name: '今日头条', icon: '📰' },
+  { id: 'bilibili', name: 'B站热门', icon: '📺' },
+  { id: 'douyin', name: '抖音热搜', icon: '🎵' },
+  { id: 'baidu', name: '百度热搜', icon: '🔍' },
+  { id: 'weibo', name: '微博热搜(需Cookie)', icon: '🌐' }
+];
+
+function $(id) { return document.getElementById(id); }
+function $$(s) { return document.querySelectorAll(s); }
+
+function toast(msg, ms = 2000) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._h);
+  t._h = setTimeout(() => t.classList.remove('show'), ms);
+}
+
+function goTab(i) {
+  $$('.panel').forEach(p => p.classList.remove('active'));
+  $$('.tab').forEach(t => t.classList.remove('active'));
+  $('panel-' + ['home', 'a1', 'a2', 'lib'][i]).classList.add('active');
+  $$('.tab')[[0,1,2,3][i] >= 3 ? 3 : [0,1,2,3][i]]; // dummy
+  document.querySelector('.tab[data-tab="' + i + '"]').classList.add('active');
+  if (i === 3) renderLib();
+  if (i === 0) renderHomeKPI();
+  window.scrollTo(0, 0);
+}
+
+function openModal(id) { $(id).classList.add('open'); }
+function closeModal(id) { $(id).classList.remove('open'); }
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function fmtTime(ms) {
+  if (!ms) return '—';
+  if (ms < 1000) return ms + 'ms';
+  return (ms / 1000).toFixed(1) + 's';
+}
+
+function fmtTokens(t) {
+  if (!t) return '0';
+  if (t > 1000) return (t / 1000).toFixed(1) + 'k';
+  return String(t);
+}
+
+function appendLive(elemId, text, kind) {
+  const el = $(elemId);
+  const span = document.createElement('span');
+  if (kind === 'think') span.className = 'think';
+  span.textContent = text;
+  el.appendChild(span);
+  el.scrollTop = el.scrollHeight;
+}
+
+function clearLive(elemId) {
+  $(elemId).innerHTML = '';
+}
+
+function logLine(elemId, msg, kind = 'info') {
+  const el = $(elemId);
+  const d = document.createElement('div');
+  d.className = 'line ' + kind;
+  d.innerHTML = '<span class="t">' + new Date().toLocaleTimeString() + '</span>' + escapeHtml(msg);
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+}
+
+function setStep(flowId, stepName, status, text) {
+  const flow = $(flowId);
+  const step = flow.querySelector('[data-step="' + stepName + '"]');
+  if (!step) return;
+  step.classList.remove('active', 'done');
+  if (status === 'active') step.classList.add('active');
+  if (status === 'done') step.classList.add('done');
+  const num = step.querySelector('.num');
+  if (num && text) num.textContent = text;
+}
+
+function copyToClipboard(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    if (btn) {
+      const old = btn.textContent;
+      btn.textContent = '✅ 已复制';
+      btn.classList.add('ok');
+      setTimeout(() => { btn.textContent = old; btn.classList.remove('ok'); }, 1500);
+    }
+    toast('已复制到剪贴板');
+  }).catch(() => toast('复制失败'));
+}
+
+function renderHomeKPI() {
+  $('kpiLib').textContent = Agents.loadLib().length;
+  $('kpiTrace').textContent = LLM.getTrace().length;
+  const cache = Fetchers.getCache();
+  $('kpiHot').textContent = cache ? cache.items.length : '—';
+}
+
+function updateGreeting() {
+  const cfg = LLM.loadConfig();
+  const pcfg = Fetchers.loadProxyCfg();
+  const g = $('greeting');
+  if (!cfg.apiKey) {
+    g.innerHTML = '⚠️ <b>还没填 API Key</b>，先去 <b>右上角 ⚙️ 设置</b> 填 DeepSeek Key。';
+    g.style.background = 'rgba(255,235,150,.92)';
+    g.style.color = '#7d4a00';
+  } else {
+    const m = cfg.model || 'deepseek-chat';
+    g.innerHTML = '✅ LLM 已就绪（' + escapeHtml(m) + '）' + (pcfg.proxyUrl ? ' · 代理：' + escapeHtml(pcfg.proxyUrl.slice(0, 40)) : ' · 公共代理模式');
+    g.style.background = 'rgba(255,255,255,.16)';
+    g.style.color = '#fff';
+  }
+}
+
+/* ========== 设置 ========== */
+function loadSettings() {
+  const cfg = LLM.loadConfig();
+  $('setProvider').value = cfg.provider || 'deepseek';
+  $('setApiKey').value = cfg.apiKey || '';
+  $('setBaseUrl').value = cfg.baseURL || 'https://api.deepseek.com';
+  $('setModel').value = cfg.model || 'deepseek-chat';
+  $('setTemp').value = cfg.temperature || 0.7;
+
+  const pcfg = Fetchers.loadProxyCfg();
+  $('setProxy').value = pcfg.proxyUrl || '';
+  $('setProfile').value = JSON.stringify(Agents.loadProfile(), null, 2);
+}
+
+function saveSettings() {
+  const cfg = {
+    provider: $('setProvider').value,
+    apiKey: $('setApiKey').value.trim(),
+    baseURL: $('setBaseUrl').value.trim() || 'https://api.deepseek.com',
+    model: $('setModel').value.trim() || 'deepseek-chat',
+    temperature: parseFloat($('setTemp').value) || 0.7,
+    maxTokens: 2000
+  };
+  LLM.saveConfig(cfg);
+
+  let profile = {};
+  try { profile = JSON.parse($('setProfile').value); } catch (e) { toast('账号画像 JSON 格式错：' + e.message); return; }
+  Agents.saveProfile(profile);
+
+  const pcfg = Fetchers.loadProxyCfg();
+  pcfg.proxyUrl = $('setProxy').value.trim();
+  Fetchers.saveProxyCfg(pcfg);
+
+  closeModal('modalSettings');
+  toast('已保存');
+  updateGreeting();
+  // 重测代理
+  if (pcfg.proxyUrl) {
+    Fetchers.probeProxy(pcfg.proxyUrl).then(ok => toast(ok ? '✅ 代理可用' : '⚠️ 代理不通，请检查 URL'));
+  }
+}
+
+$('btnSettings').onclick = () => { loadSettings(); openModal('modalSettings'); };
+$('btnLib').onclick = () => goTab(3);
+
+/* ========== Agent 1 ========== */
+async function runA1() {
+  if (!LLM.isReady()) { openModal('modalSettings'); toast('请先填 API Key'); return; }
+  $('a1Run').disabled = true;
+  $('a1Run').textContent = '⏳ Agent 1 运行中…';
+
+  // 重置 UI
+  ['a1SrcCard','a1LiveCard','a1LogCard','a1TopicsCard','a1ScriptCard'].forEach(id => $(id).style.display = 'none');
+  $('a1Sources').innerHTML = '';
+  clearLive('a1Live');
+  $('a1Log').innerHTML = '';
+  $('a1Topics').innerHTML = '';
+  $('a1Script').innerHTML = '';
+  ['fetch','score','pick','gen'].forEach(s => setStep('a1Flow', s, '', '等待'));
+
+  let lastA1 = null;
+
+  try {
+    // Step 1: 抓取
+    setStep('a1Flow', 'fetch', 'active', '抓取中…');
+    $('a1SrcCard').style.display = 'block';
+    SOURCES.forEach(s => {
+      $('a1Sources').insertAdjacentHTML('beforeend',
+        '<div class="src-row" id="src_' + s.id + '">' +
+        '<div class="name">' + s.icon + ' ' + s.name + '</div>' +
+        '<div class="stat loading" id="srcstat_' + s.id + '">等待…</div></div>'
+      );
+    });
+    logLine('a1Log', '开始抓取多源热点…', 'info');
+
+    const fetchResult = await Fetchers.fetchAll({
+      onProgress: (src, status) => {
+        if (src === '__proxy__') {
+          if (status === 'probing') $('a1ProxyInfo').textContent = '正在寻找可用代理…';
+          else if (status === 'ready') $('a1ProxyInfo').textContent = '代理已就绪：' + fetchResult?.proxy || '';
+          else $('a1ProxyInfo').textContent = '⚠️ 代理未找到，将尝试各源直连（可能被 CORS 拦）';
+          return;
+        }
+        const map = { loading: ['等待…', 'loading'], done: ['✅', 'done'], fail: ['❌ 失败', 'fail'] };
+        const el = $('srcstat_' + src);
+        if (!el) return;
+        if (status === 'loading') { el.textContent = '抓取中…'; el.className = 'stat loading'; }
+        else if (status === 'done') {
+          const c = fetchResult.sources[src]?.count || 0;
+          el.textContent = '✅ ' + c + ' 条'; el.className = 'stat done';
+        } else {
+          el.textContent = '❌ 失败'; el.className = 'stat fail';
+        }
+      }
+    });
+    $('a1ProxyInfo').textContent = fetchResult.proxy
+      ? '代理：' + fetchResult.proxy
+      : '⚠️ 没找到可用代理，已 fallback 到缓存/演示数据';
+
+    setStep('a1Flow', 'fetch', 'done', '抓到 ' + fetchResult.items.length);
+    logLine('a1Log', '抓取完成，共 ' + fetchResult.items.length + ' 条，来源：' + Object.entries(fetchResult.sources).map(([k,v]) => k + '(' + v.count + ')').join(', '), 'ok');
+
+    if (fetchResult.items.length === 0) throw new Error('没抓到任何热点，请配置代理后重试');
+
+    // Step 2: 评分
+    setStep('a1Flow', 'score', 'active', 'LLM 思考中…');
+    $('a1LiveCard').style.display = 'block';
+    appendLive('a1Live', '▼ 调用 LLM 评分 ' + Math.min(30, fetchResult.items.length) + ' 条热点...\n\n');
+    logLine('a1Log', '调用 DeepSeek 评分（JSON 模式）…', 'info');
+
+    const profile = Agents.loadProfile();
+    const compressed = fetchResult.items.slice(0, 30);
+    const sys = '你是资深的短视频内容策略师。返回严格 JSON。';
+    const usr = '## 账号画像\n' + JSON.stringify(profile) + '\n\n## 候选热点\n' + JSON.stringify(compressed.map((it, i) => ({ idx: i, title: it.title, source: it.source, heat: it.heat, desc: (it.desc || '').slice(0, 60) }))) + '\n\n按 4 维评分（relevance/creatable/viral/risk 0-10），给 total 和 1 句 reason。返回 { scored: [...], top5_recommend: [idx,...], summary: "..." }。';
+
+    const scoreResult = await LLM.call({
+      system: sys, user: usr, json: true, tag: 'agent1-score',
+      onChunk: (delta, full) => appendLive('a1Live', delta),
+      onThink: (rsn) => appendLive('a1Live', '', 'think')
+    });
+    appendLive('a1Live', '\n\n[' + fmtTime(scoreResult.elapsed) + ' · ' + fmtTokens(scoreResult.usage.total_tokens) + ' tokens · ' + scoreResult.model + ']\n');
+    logLine('a1Log', 'LLM 评分完成 ' + fmtTime(scoreResult.elapsed) + ' / ' + fmtTokens(scoreResult.usage.total_tokens) + ' tokens', 'ok');
+
+    let scored;
+    try {
+      let txt = scoreResult.content.trim();
+      const m = txt.match(/```(?:json)?\s*([\s\S]+?)\s*```/);
+      if (m) txt = m[1];
+      const j = JSON.parse(txt);
+      scored = (j.scored || []).map(s => ({ ...compressed[s.idx], _score: s, _reason: s.reason })).sort((a, b) => b._score.total - a._score.total);
+    } catch (e) {
+      throw new Error('LLM 返回 JSON 解析失败：' + e.message);
+    }
+
+    setStep('a1Flow', 'score', 'done', '评了 ' + scored.length);
+    $('a1TopicsCard').style.display = 'block';
+    $('a1Topics').innerHTML = scored.slice(0, 8).map((t, i) => {
+      const s = t._score || {};
+      return '<div class="topic top" data-idx="' + (fetchResult.items.indexOf(t)) + '">' +
+        '<div class="head"><div class="title">' + (i < 3 ? '🏆 ' : '') + escapeHtml(t.title) + '</div>' +
+        '<div class="badge ' + (s.total >= 7 ? 'hot' : s.total >= 5 ? 'gold' : 'gray') + '">' + (s.total || 0).toFixed(1) + '</div></div>' +
+        '<div class="meta"><span>📡 ' + escapeHtml(t.source) + '</span><span>🔥 ' + (t.heat || 0).toFixed(1) + 'w</span></div>' +
+        '<div class="reason">💬 ' + escapeHtml(s.reason || '') + '</div>' +
+        '<div class="scores"><div class="s"><div class="v">' + (s.relevance || 0).toFixed(1) + '</div><div class="l">相关</div></div>' +
+        '<div class="s"><div class="v">' + (s.creatable || 0).toFixed(1) + '</div><div class="l">可拍</div></div>' +
+        '<div class="s"><div class="v">' + (s.viral || 0).toFixed(1) + '</div><div class="l">爆发</div></div>' +
+        '<div class="s"><div class="v">' + (s.risk || 0).toFixed(1) + '</div><div class="l">安全</div></div></div>' +
+        '</div>';
+    }).join('');
+
+    // Step 3: 选 Top 1（自动选，但用户可点换）
+    const top = scored[0];
+    setStep('a1Flow', 'pick', 'done', 'Top: ' + (top.title || '').slice(0, 8) + '…');
+    $('a1Log').insertAdjacentHTML('beforeend', '<div class="line info"><span class="t">' + new Date().toLocaleTimeString() + '</span>自动选 Top1: ' + escapeHtml(top.title) + ' (total=' + top._score.total + ')</div>');
+
+    // Step 4: 生成脚本
+    setStep('a1Flow', 'gen', 'active', '生成中…');
+    appendLive('a1Live', '\n\n▼ 调用 LLM 生成 Top1 脚本...\n\n');
+    logLine('a1Log', '调用 LLM 生成可发布脚本…', 'info');
+
+    const scriptResult = await LLM.call({
+      system: '你是爆款短视频脚本撰稿人。返回严格 JSON。',
+      user: '## 账号\n' + JSON.stringify(profile) + '\n\n## 选题\n' + JSON.stringify({ title: top.title, source: top.source, desc: top.desc, reason: top._reason }) + '\n\n## 任务\n生成 3 个备选标题、3 秒钩子、30 秒分镜脚本、封面、5-7 标签、发布时间、CTA、风险自查、预期数据。返回 { title:[3], hook_3s, script_30s, cover_text, hashtags:[5-7], publish_time, cta, risk_check, expected_metrics }。',
+      json: true, tag: 'agent1-generate',
+      onChunk: (delta) => appendLive('a1Live', delta)
+    });
+    appendLive('a1Live', '\n\n[' + fmtTime(scriptResult.elapsed) + ' · ' + fmtTokens(scriptResult.usage.total_tokens) + ' tokens]\n');
+    logLine('a1Log', '脚本生成完成 ' + fmtTime(scriptResult.elapsed) + ' / ' + fmtTokens(scriptResult.usage.total_tokens) + ' tokens', 'ok');
+
+    let script;
+    try {
+      let txt = scriptResult.content.trim();
+      const m = txt.match(/```(?:json)?\s*([\s\S]+?)\s*```/);
+      if (m) txt = m[1];
+      script = JSON.parse(txt);
+    } catch (e) {
+      throw new Error('生成脚本 JSON 解析失败：' + e.message);
+    }
+
+    setStep('a1Flow', 'gen', 'done', '完成');
+
+    // 渲染
+    $('a1ScriptCard').style.display = 'block';
+    const titles = (script.title || []).map(t => escapeHtml(t));
+    const hashtags = (script.hashtags || []).map(h => '<span class="badge green">' + escapeHtml(h) + '</span>').join(' ');
+    $('a1Script').innerHTML =
+      renderDraft('3 个备选标题', titles.join('\n'), 'titles') +
+      renderDraft('🎯 3 秒钩子（视觉+配音+字幕）', script.hook_3s, 'hook') +
+      renderDraft('📜 30 秒分镜脚本', script.script_30s, 'script') +
+      renderDraft('🖼 封面大字', script.cover_text, 'cover') +
+      '<div class="draft"><div class="label">#️⃣ 标签</div><div class="row-tags">' + hashtags + '</div>' + copyBtn('hashtags', (script.hashtags || []).map(h => h.startsWith('#') ? h : '#' + h).join(' ')) + '</div>' +
+      renderDraft('⏰ 发布时间', script.publish_time, 'time') +
+      renderDraft('💬 CTA（互动设计）', script.cta, 'cta') +
+      renderDraft('🛡 风险自查', script.risk_check, 'risk') +
+      renderDraft('📊 预期表现', script.expected_metrics, 'metric') +
+      '<div class="row-tags" style="margin-top:10px;">' +
+        '<button class="btn sm" onclick="saveScriptToLib(' + JSON.stringify(JSON.stringify({title: titles[0], hook: script.hook_3s, script: script.script_30s, hashtags: script.hashtags, cta: script.cta, topic: top.title, source: top.source})).replace(/"/g, '&quot;') + ')">💾 存到内容资产库</button>' +
+      '</div>';
+
+    lastA1 = { profile, fetchSummary: { total: fetchResult.items.length, sources: fetchResult.sources, proxy: fetchResult.proxy }, scored, top, script };
+    window._lastA1 = lastA1;
+
+  } catch (err) {
+    logLine('a1Log', '❌ 错误：' + err.message, 'err');
+    appendLive('a1Live', '\n\n❌ ' + err.message);
+    toast('Agent 1 失败：' + err.message, 4000);
+  } finally {
+    $('a1Run').disabled = false;
+    $('a1Run').textContent = '🚀 一键跑 Agent 1';
+  }
+}
+
+function renderDraft(label, content, copyKey) {
+  if (!content) return '';
+  return '<div class="draft"><div class="label"><span>' + label + '</span>' + copyBtn(copyKey, typeof content === 'string' ? content : JSON.stringify(content, null, 2)) + '</div><div class="content">' + (typeof content === 'string' ? escapeHtml(content).replace(/\n/g, '<br>') : content) + '</div></div>';
+}
+
+function copyBtn(key, text) {
+  return '<button class="copy-btn" onclick="copyToClipboard(atob(\'' + btoa(unescape(encodeURIComponent(text || ''))) + '\'), this)">📋 复制</button>';
+}
+
+function saveScriptToLib(jsonStr) {
+  const d = JSON.parse(jsonStr);
+  Agents.addToLib({
+    type: 'script',
+    title: d.title,
+    content: '【选题】' + d.topic + ' (' + d.source + ')\n【钩子】' + d.hook + '\n\n【脚本】\n' + d.script + '\n\n【CTA】' + d.cta,
+    tags: d.hashtags || []
+  });
+  toast('已存到内容资产库');
+  renderHomeKPI();
+}
+
+/* ========== Agent 2 ========== */
+async function runA2() {
+  if (!LLM.isReady()) { openModal('modalSettings'); toast('请先填 API Key'); return; }
+  let txt = $('a2Input').value.trim();
+  if (!txt) txt = $('a2Pick').value;
+  if (!txt || txt.length < 30) { toast('请粘贴至少 30 字'); return; }
+
+  $('a2Run').disabled = true;
+  $('a2Run').textContent = '⏳ Agent 2 运行中…';
+  ['a2LiveCard','a2AnalysisCard','a2RemixCard'].forEach(id => $(id).style.display = 'none');
+  $('a2Analysis').innerHTML = '';
+  $('a2Remixes').innerHTML = '';
+  clearLive('a2Live');
+  ['analyze','driving','remix','sim'].forEach(s => setStep('a2Flow', s, '', '等待'));
+
+  try {
+    const profile = Agents.loadProfile();
+
+    // Step 1: 5 维拆解
+    setStep('a2Flow', 'analyze', 'active', '拆解中…');
+    $('a2LiveCard').style.display = 'block';
+    appendLive('a2Live', '▼ 调用 LLM 做 5 维拆解...\n\n');
+
+    const a1 = await LLM.call({
+      system: '你是爆款拆解专家。返回严格 JSON。',
+      user: '## 爆款文本\n"""\n' + txt.slice(0, 3500) + '\n"""\n\n5 维评分（hook/bait/retention/interaction/cta 各 0-10）、一句话总结、driving_factors（≤3条撬动机制）、reusable_template、do_not_copy、do_copy。返回 { score_by_dim, score_summary, driving_factors, reusable_template, do_not_copy, do_copy }。',
+      json: true, tag: 'agent2-analyze',
+      onChunk: (d) => appendLive('a2Live', d)
+    });
+    appendLive('a2Live', '\n\n[' + fmtTime(a1.elapsed) + ' · ' + fmtTokens(a1.usage.total_tokens) + ' tokens]\n');
+
+    let analysis;
+    try { let t = a1.content.trim(); const m = t.match(/```(?:json)?\s*([\s\S]+?)\s*```/); if (m) t = m[1]; analysis = JSON.parse(t); }
+    catch (e) { throw new Error('拆解 JSON 解析失败：' + e.message); }
+    setStep('a2Flow', 'analyze', 'done', '完成');
+
+    setStep('a2Flow', 'driving', 'active', '找撬动要素…');
+    $('a2AnalysisCard').style.display = 'block';
+    const dim = analysis.score_by_dim || {};
+    $('a2Analysis').innerHTML =
+      '<div class="dim5">' +
+        ['hook','bait','retention','interaction','cta'].map(k =>
+          '<div class="d"><div class="v">' + (dim[k] || 0).toFixed(1) + '</div><div class="l">' + ({hook:'钩子',bait:'饵物',retention:'停留',interaction:'互动',cta:'CTA'})[k] + '</div></div>'
+        ).join('') +
+      '</div>' +
+      renderDraft('一句话总结', analysis.score_summary, 'sum') +
+      renderDraft('💡 真正撬动流量的底层机制', (analysis.driving_factors || []).map((x, i) => (i+1) + '. ' + x).join('\n'), 'drv') +
+      renderDraft('🧩 可复用结构模板', analysis.reusable_template, 'tpl') +
+      renderDraft('🚫 不能照搬的表层', analysis.do_not_copy, 'no') +
+      renderDraft('✅ 可以借鉴的骨架', analysis.do_copy, 'yes');
+    setStep('a2Flow', 'driving', 'done', (analysis.driving_factors || []).length + ' 条');
+
+    // Step 2: 生成二创
+    setStep('a2Flow', 'remix', 'active', '生成 3 条二创…');
+    appendLive('a2Live', '\n\n▼ 调用 LLM 生成 3 条差异化二创...\n\n');
+
+    const a2 = await LLM.call({
+      system: '你是爆款二次创作撰稿人。必须差异化，禁止同义词替换。返回严格 JSON。',
+      user: '## 账号\n' + JSON.stringify(profile) + '\n\n## 拆解\n' + JSON.stringify(analysis) + '\n\n## 原文本（仅对照，避免雷同）\n"""\n' + txt.slice(0, 2000) + '\n"""\n\n基于 driving_factors 和 reusable_template 生成 3 条差异化二创。每条含 name、change、title、hook_3s、script_30s、hashtags、cta、similarity_self(0-100)。返回 { remixes: [...] }。',
+      json: true, tag: 'agent2-remix',
+      onChunk: (d) => appendLive('a2Live', d)
+    });
+    appendLive('a2Live', '\n\n[' + fmtTime(a2.elapsed) + ' · ' + fmtTokens(a2.usage.total_tokens) + ' tokens]\n');
+
+    let remixRes;
+    try { let t = a2.content.trim(); const m = t.match(/```(?:json)?\s*([\s\S]+?)\s*```/); if (m) t = m[1]; remixRes = JSON.parse(t); }
+    catch (e) { throw new Error('二创 JSON 解析失败：' + e.message); }
+    setStep('a2Flow', 'remix', 'done', (remixRes.remixes || []).length + ' 条');
+
+    // 算相似度
+    setStep('a2Flow', 'sim', 'active', '校验…');
+    const remixes = (remixRes.remixes || []).map(rx => {
+      const mySim = Agents.quickSimilarity(txt, (rx.script_30s || '') + (rx.hook_3s || ''));
+      return { ...rx, similarity_calc: mySim, similarity_final: Math.max(rx.similarity_self || 0, mySim) };
+    });
+    setStep('a2Flow', 'sim', 'done', '全部 < ' + (Math.max(...remixes.map(x => x.similarity_final)) || 0) + '%');
+
+    $('a2RemixCard').style.display = 'block';
+    $('a2Remixes').innerHTML = remixes.map((rx, i) => {
+      const tags = (rx.hashtags || []).map(h => '<span class="badge green">' + escapeHtml(h) + '</span>').join(' ');
+      const sim = rx.similarity_final || 0;
+      const simClass = sim < 20 ? 'green' : sim < 35 ? 'gold' : 'hot';
+      return '<div class="card" style="margin:0 0 10px;">' +
+        '<h2>🪄 ' + escapeHtml(rx.name || ('方案 ' + (i+1))) + ' <span class="badge ' + simClass + '">相似度 ' + sim + '%</span></h2>' +
+        '<div class="muted" style="margin-bottom:8px;">🔁 ' + escapeHtml(rx.change || '') + '</div>' +
+        renderDraft('标题', rx.title, 'r' + i + 't') +
+        renderDraft('🎯 3 秒钩子', rx.hook_3s, 'r' + i + 'h') +
+        renderDraft('📜 30 秒脚本', rx.script_30s, 'r' + i + 's') +
+        '<div class="draft"><div class="label">#️⃣ 标签</div><div class="row-tags">' + tags + '</div>' + copyBtn('r' + i + 'tags', (rx.hashtags || []).map(h => h.startsWith('#') ? h : '#' + h).join(' ')) + '</div>' +
+        renderDraft('💬 CTA', rx.cta, 'r' + i + 'c') +
+        '<div class="row-tags" style="margin-top:10px;">' +
+          '<button class="btn sm" onclick="saveRemixToLib(' + JSON.stringify(JSON.stringify(rx)).replace(/"/g, '&quot;') + ')">💾 入库</button>' +
+          '<button class="btn sm ghost" onclick="addToTrack(\'' + escapeHtml(rx.name || ('方案'+i)).replace(/'/g, '') + '\')">📌 加追踪</button>' +
+        '</div>' +
+        '</div>';
+    }).join('');
+
+    // 整体存到分析库
+    Agents.addToLib({
+      type: 'analysis',
+      title: '爆款拆解：' + txt.slice(0, 30) + '…',
+      content: '## 5 维评分\n' + JSON.stringify(analysis.score_by_dim, null, 2) +
+        '\n\n## 撬动机制\n' + (analysis.driving_factors || []).join('\n') +
+        '\n\n## 复用模板\n' + (analysis.reusable_template || ''),
+      tags: ['#爆款拆解']
+    });
+    window._lastA2 = { analysis, remixes, source: txt };
+
+  } catch (err) {
+    appendLive('a2Live', '\n\n❌ ' + err.message);
+    toast('Agent 2 失败：' + err.message, 4000);
+  } finally {
+    $('a2Run').disabled = false;
+    $('a2Run').textContent = '🚀 拆解 + 生成二创';
+  }
+}
+
+function saveRemixToLib(jsonStr) {
+  const rx = JSON.parse(jsonStr);
+  Agents.addToLib({
+    type: 'remix',
+    title: rx.name + ' · ' + (rx.title || '').slice(0, 30),
+    content: '【差异化】' + rx.change + '\n\n【标题】' + rx.title + '\n\n【钩子】' + rx.hook_3s + '\n\n【脚本】\n' + rx.script_30s + '\n\n【CTA】' + rx.cta,
+    tags: rx.hashtags || []
+  });
+  toast('已入库');
+  renderHomeKPI();
+}
+
+function addToTrack(name) {
+  Agents.addToTrack({
+    name,
+    status: '待发布',
+    metrics: { views: 0, likes: 0, comments: 0, shares: 0 }
+  });
+  toast('已加入追踪表');
+  renderHomeKPI();
+}
+
+/* ========== 资产库 ========== */
+function renderLib() {
+  const lib = Agents.loadLib();
+  $('libCount').textContent = lib.length + ' 条';
+  $('libList').innerHTML = lib.length === 0
+    ? '<div class="muted center" style="padding:30px 0;">还没内容，跑完 Agent 1/2 自动入库</div>'
+    : lib.map(e => '<div class="topic" onclick="showLibDetail(\'' + e.id + '\')">' +
+        '<div class="head"><div class="title">' + escapeHtml(e.title || e.name) + '</div><div class="badge ' + (e.type === 'remix' ? 'peer' : e.type === 'analysis' ? 'acc' : 'gold') + '">' + (e.type || 'item') + '</div></div>' +
+        '<div class="meta"><span>' + new Date(e.createdAt).toLocaleString() + '</span></div>' +
+        '</div>').join('');
+
+  const tk = Agents.loadTrack();
+  $('trackCount').textContent = tk.length + ' 条';
+  $('trackList').innerHTML = tk.length === 0
+    ? '<div class="muted center" style="padding:30px 0;">还没有追踪条目</div>'
+    : tk.map(t => '<div class="topic">' +
+        '<div class="head"><div class="title">' + escapeHtml(t.name) + '</div><div class="badge gold">' + escapeHtml(t.status) + '</div></div>' +
+        '<div class="meta"><span>📅 ' + new Date(t.createdAt).toLocaleDateString() + '</span><span>👁 0</span><span>👍 0</span></div>' +
+        '<div class="row-tags" style="margin-top:8px;">' +
+          '<button class="btn sm ghost" onclick="updateTrack(\'' + t.id + '\',\'已发布\')">已发布</button>' +
+          '<button class="btn sm" style="background:var(--red);" onclick="delTrack(\'' + t.id + '\')">删除</button>' +
+        '</div>' +
+        '</div>').join('');
+}
+
+function showLibDetail(id) {
+  const e = Agents.loadLib().find(x => x.id === id);
+  if (!e) return;
+  $('libDetailTitle').textContent = e.title || '未命名';
+  $('libDetailContent').innerHTML =
+    '<div class="muted" style="margin-bottom:8px;">' + (e.type || '') + ' · ' + new Date(e.createdAt).toLocaleString() + '</div>' +
+    '<div class="draft"><div class="label"><span>内容</span>' + copyBtn('lib_' + id, e.content || '') + '</div><div class="content">' + escapeHtml(e.content || '').replace(/\n/g, '<br>') + '</div></div>' +
+    (e.tags && e.tags.length ? '<div class="row-tags" style="margin-top:8px;">' + e.tags.map(t => '<span class="badge green">' + escapeHtml(t) + '</span>').join('') + '</div>' : '');
+  openModal('modalLibDetail');
+}
+
+function updateTrack(id, status) {
+  Agents.updateTrack(id, { status });
+  renderLib();
+  toast('状态已更新');
+}
+function delTrack(id) {
+  const tk = Agents.loadTrack().filter(x => x.id !== id);
+  localStorage.setItem('muxu_track', JSON.stringify(tk));
+  renderLib();
+  toast('已删除');
+}
+
+function exportLib() {
+  const md = Agents.exportLibAsMarkdown();
+  downloadFile('muxu_content_lib_' + Date.now() + '.md', md);
+}
+function exportTrack() {
+  const tk = Agents.loadTrack();
+  let md = '# 发布追踪表\n\n' + tk.map(t => '## ' + t.name + '\n- 状态: ' + t.status + '\n- 创建: ' + t.createdAt + '\n').join('\n');
+  downloadFile('muxu_track_' + Date.now() + '.md', md);
+}
+function downloadFile(name, content) {
+  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name; a.click();
+  URL.revokeObjectURL(url);
+}
+function clearLib() {
+  if (!confirm('确定清空内容资产库？此操作不可恢复。')) return;
+  localStorage.removeItem('muxu_content_lib');
+  renderLib();
+  toast('已清空');
+}
+
+/* ========== 初始化 ========== */
+function refreshLibPicker() {
+  const lib = Agents.loadLib();
+  $('a2Pick').innerHTML = '<option value="">— 不选，自己粘贴 —</option>' +
+    lib.filter(x => x.type === 'remix' || x.type === 'script').map(x => '<option value="' + escapeHtml(x.content).slice(0, 500) + '">' + escapeHtml(x.title) + '</option>').join('');
+}
+
+(function init() {
+  updateGreeting();
+  renderHomeKPI();
+  refreshLibPicker();
+  // 没 Key 第一次打开主动提示
+  if (!LLM.isReady()) {
+    setTimeout(() => { openModal('modalSettings'); loadSettings(); }, 600);
+  }
+})();
+</script>
+</body>
+</html>

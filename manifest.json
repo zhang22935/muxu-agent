@@ -1,0 +1,17 @@
+{
+  "name": "苜蓿爆款 Agent 工作台",
+  "short_name": "爆款Agent",
+  "description": "AI Agent 实战 Demo · 每日热点→爆款 + 爆款拆解→二次创作",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#faf7f2",
+  "theme_color": "#e8590c",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23e8590c'/%3E%3Cstop offset='1' stop-color='%23f59f00'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='22' fill='url(%23g)'/%3E%3Ctext x='50' y='66' font-size='48' text-anchor='middle'%3E%F0%9F%8D%B3%3C/text%3E%3C/svg%3E",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
