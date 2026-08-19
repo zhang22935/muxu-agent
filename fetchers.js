@@ -39,6 +39,8 @@
   // ============== 抓取核心 ==============
   async function fetchViaProxy(targetUrl, proxyBase) {
     // 通用代理调用：假设代理支持 ?url= 形式
+    // 自动剥离用户可能误填的尾缀 ?url= 或 &url=
+    proxyBase = proxyBase.replace(/[?&]url=*$/, '');
     const sep = proxyBase.includes('?') ? '&' : '?';
     const url = proxyBase + sep + 'url=' + encodeURIComponent(targetUrl);
     const r = await fetch(url, { method: 'GET' });

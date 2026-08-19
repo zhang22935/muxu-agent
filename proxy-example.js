@@ -9,7 +9,7 @@
  *   2) 把这个文件保存为 proxy.js
  *   3) 在 proxy.js 所在目录执行： node proxy.js
  *   4) 终端会显示 "代理已启动 http://localhost:8088"
- *   5) 打开工作台 → 设置 → "代理 URL" 填 http://localhost:8088/?url=
+ *   5) 打开工作台 → 设置 → "代理 URL" 填 http://localhost:8088/
  *   6) 现在抓的是真数据：微博/头条/B站/百度
  *
  * 方式 2：部署到云（Vercel/Netlify/Cloudflare Workers）
