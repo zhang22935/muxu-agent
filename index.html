@@ -691,6 +691,9 @@ async function runA1() {
 
     if (fetchResult.items.length === 0) throw new Error('没抓到任何热点，请配置代理后重试');
 
+    // 提前加载 profile — 后面 LLM 自主规划/评分/选择/生成 都会用到
+    const profile = Agents.loadProfile();
+
     // === AGENT STEP 1: LLM 自主规划 ===
     setStep('a1Flow', 'plan', 'active', '规划中…');
     appendLive('a1Live', '\n\n▼ [Agent Loop] LLM 自主规划：审视热点、制定评分策略...\n\n');
@@ -729,7 +732,7 @@ async function runA1() {
     appendLive('a1Live', '▼ 调用 LLM 评分 ' + Math.min(30, fetchResult.items.length) + ' 条热点...\n\n');
     logLine('a1Log', '调用 DeepSeek 评分（JSON 模式）…', 'info');
 
-    const profile = Agents.loadProfile();
+    // profile 已经在 line ~694 提前加载（Agent Loop 规划步骤需要）
     const compressed = fetchResult.items.slice(0, 30);
     const sys = '你是资深的短视频内容策略师。返回严格 JSON。';
     const usr = '## 账号画像\n' + JSON.stringify(profile) + '\n\n## 候选热点\n' + JSON.stringify(compressed.map((it, i) => ({ idx: i, title: it.title, source: it.source, heat: it.heat, desc: (it.desc || '').slice(0, 60) }))) + '\n\n按 4 维评分（relevance/creatable/viral/risk 0-10），给 total 和 1 句 reason。返回 { scored: [...], top5_recommend: [idx,...], summary: "..." }。';
