@@ -212,8 +212,8 @@
           const list = parseWeibo(data);
           sources.weibo = { ok: true, count: list.length };
           items.push(...list);
-          onProg('weibo', 'done');
-        } catch (e) { errors.weibo = e.message; sources.weibo = { ok: false }; onProg('weibo', 'fail'); }
+          onProg('weibo', 'done', list.length);
+        } catch (e) { errors.weibo = e.message; sources.weibo = { ok: false }; onProg('weibo', 'fail', 0, e.message); }
       })());
     }
     if (enabled.includes('toutiao')) {
@@ -225,8 +225,8 @@
           const list = parseToutiao(data);
           sources.toutiao = { ok: true, count: list.length };
           items.push(...list);
-          onProg('toutiao', 'done');
-        } catch (e) { errors.toutiao = e.message; sources.toutiao = { ok: false }; onProg('toutiao', 'fail'); }
+          onProg('toutiao', 'done', list.length);
+        } catch (e) { errors.toutiao = e.message; sources.toutiao = { ok: false }; onProg('toutiao', 'fail', 0, e.message); }
       })());
     }
     if (enabled.includes('bilibili')) {
@@ -238,8 +238,8 @@
           const list = parseBilibili(data);
           sources.bilibili = { ok: true, count: list.length };
           items.push(...list);
-          onProg('bilibili', 'done');
-        } catch (e) { errors.bilibili = e.message; sources.bilibili = { ok: false }; onProg('bilibili', 'fail'); }
+          onProg('bilibili', 'done', list.length);
+        } catch (e) { errors.bilibili = e.message; sources.bilibili = { ok: false }; onProg('bilibili', 'fail', 0, e.message); }
       })());
     }
     if (enabled.includes('baidu')) {
@@ -250,8 +250,8 @@
           const list = parseBaidu(html);
           sources.baidu = { ok: true, count: list.length };
           items.push(...list);
-          onProg('baidu', 'done');
-        } catch (e) { errors.baidu = e.message; sources.baidu = { ok: false }; onProg('baidu', 'fail'); }
+          onProg('baidu', 'done', list.length);
+        } catch (e) { errors.baidu = e.message; sources.baidu = { ok: false }; onProg('baidu', 'fail', 0, e.message); }
       })());
     }
     if (enabled.includes('douyin')) {
@@ -263,8 +263,8 @@
           const list = parseDouyin(data);
           sources.douyin = { ok: true, count: list.length };
           items.push(...list);
-          onProg('douyin', 'done');
-        } catch (e) { errors.douyin = e.message; sources.douyin = { ok: false }; onProg('douyin', 'fail'); }
+          onProg('douyin', 'done', list.length);
+        } catch (e) { errors.douyin = e.message; sources.douyin = { ok: false }; onProg('douyin', 'fail', 0, e.message); }
       })());
     }
     await Promise.allSettled(tasks);

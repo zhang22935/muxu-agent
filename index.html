@@ -707,7 +707,7 @@ async function runA1() {
 
     let fetchResult;
     fetchResult = await Fetchers.fetchAll({
-      onProgress: (src, status) => {
+      onProgress: (src, status, count, errMsg) => {
         if (src === '__proxy__') {
           if (status === 'probing') $('a1ProxyInfo').textContent = '正在寻找可用代理…';
           else if (status === 'ready') $('a1ProxyInfo').textContent = '代理已就绪，抓取中…';
@@ -718,10 +718,12 @@ async function runA1() {
         if (!el) return;
         if (status === 'loading') { el.textContent = '抓取中…'; el.className = 'stat loading'; }
         else if (status === 'done') {
-          const c = fetchResult?.sources?.[src]?.count || 0;
+          // count 直接从 callback 取，不等 await 结束（fetchResult 还没就绪）
+          const c = (typeof count === 'number' ? count : (fetchResult?.sources?.[src]?.count || 0));
           el.textContent = '✅ ' + c + ' 条'; el.className = 'stat done';
         } else {
           el.textContent = '❌ 失败'; el.className = 'stat fail';
+          el.title = errMsg || '';
         }
       }
     });
