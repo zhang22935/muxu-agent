@@ -1,0 +1,14 @@
+# 备份目录（脚本运行生成的临时快照）
+backups-*/
+batch-fix.py
+fix-varname.py
+verify-fix.py
+commit-step1.bat
+commit-msg.txt
+
+# 不进仓库的中间脚本
+*.tmp
+*.bak
+
+# 操作手册 — 已改为 PDF 单独交付
+交付讲解与操作手册.md
