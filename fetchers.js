@@ -266,8 +266,12 @@
     const usedCache = items.length === 0;
     if (usedCache) {
       const cached = getCache();
-      if (cached && cached.items) {
+      if (cached && cached.items && cached.items.length > 0) {
         items.push(...cached.items.map(x => ({ ...x, stale: true })));
+      } else {
+        // 浏览器首次访问、没有缓存 → 用内置 DEMO_FALLBACK（仍是真实历史抓取样本）
+        items.push(...DEMO_FALLBACK);
+        errors.all = 'no cache + all sources failed → using DEMO_FALLBACK';
       }
     } else {
       saveCache({ items, sources, ts: Date.now() });
