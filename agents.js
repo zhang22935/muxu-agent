@@ -334,61 +334,97 @@ ${JSON.stringify(profile)}
 
   // ============== Agent 2: 爆款拆解 → 二创 ==============
 
-  // 第一步：5 维真实拆解
-  async function analyzeViral(viralText, profile, onProgress) {
+  // 第一步：横向对比拆解（高表现组 vs 普通表现组）
+  async function analyzeViral(viralTexts, controlTexts, profile, onProgress) {
     const sys = `你是爆款内容拆解专家，深谙短视频/口播脚本的爆款公式。
+最关键的能力：能从「同一账号的高表现 vs 普通表现」对照中，
+识别出"真正驱动流量"的元素——而不是和账号固定风格混在一起的"共现元素"。
 拆解要"穿透表面文案"找"真正带流量的底层机制"。返回严格 JSON。`;
-
-    const usr = `## 待拆解的爆款（用户粘贴的脚本/口播稿/旁白）
-"""
-${viralText.slice(0, 3500)}
-"""
-
-## 任务：5 维拆解
-1. **钩子 hook**（前 3 秒怎么抓人：视觉+听觉+悬念）
-2. **饵物 bait**（靠什么让用户留下来：是利他/猎奇/争议/身份认同/情感共鸣）
-3. **停留 retention**（节奏、信息密度、转折点，每 N 秒一个小钩子）
-4. **互动 interaction**（如何引导评论/点赞/转发/收藏/关注）
-5. **CTA 收尾**（结尾的行动引导：硬广/软广/留白/反转）
-
-## 输出字段
-- "score_by_dim": { "hook":0-10, "bait":0-10, "retention":0-10, "interaction":0-10, "cta":0-10 }
-- "score_summary": "一句话总结整体"
-- "driving_factors": ["真正撬动流量的底层机制 1", "机制 2", "机制 3"]（≤3 条，必须是"为什么"而不是"是什么"）
-- "reusable_template": "可复用的结构模板（用 [A]/[B]/[C] 占位符）"
-- "do_not_copy": "不能照搬的表层元素（如具体菜名/具体场景）"
-- "do_copy": "可以借鉴的底层骨架"
-
-只输出 JSON。`;
-
-    onProgress && onProgress({ stage: 'analyzing', message: '把爆款喂给 LLM，做 5 维真实拆解…' });
-    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent2-analyze', maxTokens: 5000 });
-    onProgress && onProgress({ stage: 'analyzed', message: '拆解完成，耗时 ' + r.elapsed + 'ms' });
-    return r.json;
-  }
-
-  // 第二步：基于拆解，生成 ≥3 条差异化二创
-  async function generateRemix(analysis, viralText, profile, onProgress) {
-    const sys = `你是爆款二次创作脚本撰稿人。必须"差异化"：换选题场景/换叙述视角/换结构顺序/换论证材料，禁止同义词替换。返回严格 JSON。`;
 
     const usr = `## 账号
 ${JSON.stringify(profile)}
 
-## 已完成的 5 维拆解
+## 🔥 高表现组（${viralTexts.length} 条爆款脚本/口播稿）
+"""
+${viralTexts.map((t, i) => `【爆款 ${i + 1}】\n${t.slice(0, 1500)}`).join('\n\n')}
+"""
+
+## 📊 普通表现组（${controlTexts.length} 条同账号普通内容，用于对照）
+"""
+${controlTexts.map((t, i) => `【对照 ${i + 1}】\n${t.slice(0, 1500)}`).join('\n\n')}
+"""
+
+## 任务：6 维真实拆解 + 横向对比
+- **钩子 hook**（前 3 秒怎么抓人：视觉+听觉+悬念）
+- **饵物 bait**（靠什么让用户留下来：是利他/猎奇/争议/身份认同/情感共鸣）
+- **停留 retention**（节奏、信息密度、转折点，每 N 秒一个小钩子）
+- **互动 interaction**（如何引导评论/点赞/转发/收藏/关注）
+- **CTA 收尾**（结尾的行动引导：硬广/软广/留白/反转）
+- **信息密度**（每 10 秒内的关键信息点数量）
+
+## 关键：横向对比
+你必须区分这 3 类特征，把"驱动要素"严格只放在只有高表现组才有的特征上：
+
+A. **only_in_viral（真正驱动流量）**：高表现组有，但普通组没有/弱得多的特征
+   → 这些才是 driving_factors，必须 ≤3 条，是"为什么火"的因果关系
+B. **shared_style（账号固有风格，不是驱动）**：两组都有的共同特征
+   → 仅记录，不算 driving_factors
+C. **control_anti（对照组反例）**：普通组踩了但高表现组避开的坑
+   → 仅记录，避免二创时重复
+
+## 输出字段
+{
+  "score_by_dim": { "hook":0-10, "bait":0-10, "retention":0-10, "interaction":0-10, "cta":0-10, "info_density":0-10 },
+  "score_summary": "一句话总结整体",
+  "only_in_viral": ["只有高表现组才有的特征 1", "特征 2"],        // driving_factors 的来源
+  "shared_style": ["两组都有的账号风格 1", "风格 2"],              // 不是驱动要素
+  "control_anti": ["对照组踩的坑 1"],                              // 反例
+  "driving_factors": ["真正撬动流量的底层机制（来自 only_in_viral，因果描述）"],  // ≤3 条
+  "account_template": "账号风格模板（来自 shared_style，用 [A]/[B]/[C] 占位符）",
+  "reusable_template": "爆款可复用结构模板（叠加 only_in_viral 的差异点，区分账号模板）",
+  "do_not_copy": "不能照搬的表层元素（具体菜名/具体场景）",
+  "do_copy": "可以借鉴的底层骨架"
+}
+
+只输出 JSON。`;
+
+    onProgress && onProgress({ stage: 'analyzing', message: '横向对比 ' + viralTexts.length + ' 高 vs ' + controlTexts.length + ' 普通，做 6 维拆解…' });
+    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent2-analyze', maxTokens: 6000 });
+    onProgress && onProgress({ stage: 'analyzed', message: '对比拆解完成，耗时 ' + r.elapsed + 'ms' });
+    return r.json;
+  }
+
+  // 第二步：基于对比拆解，生成 ≥3 条差异化二创
+  async function generateRemix(analysis, viralTexts, controlTexts, profile, onProgress) {
+    const sys = `你是爆款二次创作脚本撰稿人。必须"差异化"：换选题场景/换叙述视角/换结构顺序/换论证材料，禁止同义词替换。
+重要：你拿到的拆解来自高表现组 vs 普通表现组的横向对比，driving_factors 是「只有高表现组才有的特征」。
+你必须严格遵守：复用 driving_factors + account_template + 避开 control_anti。返回严格 JSON。`;
+
+    const usr = `## 账号
+${JSON.stringify(profile)}
+
+## 已完成的对比拆解（高表现 vs 普通）
 ${JSON.stringify(analysis, null, 2)}
 
-## 原爆款文本（仅供对照，避免雷同）
+## 高表现原文（仅供对照，避免雷同）
 """
-${viralText.slice(0, 2000)}
+${viralTexts[0]?.slice(0, 1500) || ''}
 """
 
-## 任务：基于"driving_factors"和"reusable_template"，生成 **3 条** 差异化二创
+## 普通表现原文（仅供对照，反面案例）
+"""
+${controlTexts[0]?.slice(0, 800) || ''}
+"""
+
+## 任务：基于 driving_factors（来自横向对比）和 account_template，生成 **3 条** 差异化二创
 每条都必须：
-1. 套用 reusable_template 的骨架
-2. 选题场景/视角/切入点与原爆款**显著不同**
-3. 完整可发布：标题 + 钩子 + 30 秒正文 + 标签 + CTA
-4. 标注"换的是什么"（选题场景/视角/结构/材料）
-5. 标注"相似度自评"：0-100（与原爆款文本的相似程度，应<30）
+1. 套用 account_template 的账号风格骨架
+2. 必须触发 driving_factors（把它们"组合进"新选题）
+3. 必须避开 control_anti（对照组踩过的坑）
+4. 选题场景/视角/切入点与高表现原文**显著不同**
+5. 完整可发布：标题 + 钩子 + 30 秒正文 + 标签 + CTA
+6. 标注"换的是什么"+"触发了哪个 driving_factor"+"回避了哪个 control_anti"
+7. 标注"相似度自评"：0-100（与所有高表现原文的相似程度，应<30）
 
 ## 输出 JSON
 {
@@ -396,6 +432,8 @@ ${viralText.slice(0, 2000)}
     {
       "name": "二创方案 A",
       "change": "换了什么（一句话说清）",
+      "triggered_drivers": ["触发了 driving_factors[0]", "触发了 driving_factors[1]"],
+      "avoided_anti": ["避开了 control_anti[0]"],
       "title": "...",
       "hook_3s": "...",
       "script_30s": "...",
@@ -406,7 +444,7 @@ ${viralText.slice(0, 2000)}
   ]
 }`;
 
-    onProgress && onProgress({ stage: 'remixing', message: '基于拆解的 driving_factors 生成 3 条差异化二创…' });
+    onProgress && onProgress({ stage: 'remixing', message: '基于对比拆解的 driving_factors 生成 3 条差异化二创…' });
     const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent2-remix', maxTokens: 8000 });
     onProgress && onProgress({ stage: 'remixed', message: '二创生成完成，耗时 ' + r.elapsed + 'ms' });
     return r.json;
@@ -438,46 +476,61 @@ ${viralText.slice(0, 2000)}
 
   // ============== Agent 2: Agent Loop（规划→拆解→生成→自检→重试） ==============
 
-  // 第 0 步：LLM 自主规划拆解策略
-  async function planAnalysis(viralText, profile, onProgress) {
-    const sys = `你是爆款分析规划师。在拆解前，先判断内容类型、制定分析重点。
-这不是走形式——你要真正预判可能发现的爆款机制，指导后续拆解。返回严格 JSON。`;
+  // 第 0 步：LLM 自主规划拆解策略（带对比组的视角）
+  async function planAnalysis(viralTexts, controlTexts, profile, onProgress) {
+    const sys = `你是爆款分析规划师。在横向对比拆解前，先判断高表现组 vs 普通组的内容类型差异、制定分析重点。
+这不是走形式——你要真正预判可能发现的"真正驱动要素"，并指出共现陷阱（不要把"账号风格"误当成"驱动要素"）。
+返回严格 JSON。`;
 
     const usr = `## 账号
 ${JSON.stringify(profile)}
 
-## 待分析文本（前 300 字）
+## 高表现组（前 300 字 / 第 1 条，共 ${viralTexts.length} 条）
 """
-${viralText.slice(0, 300)}
+${viralTexts[0]?.slice(0, 300) || ''}
+"""
+
+## 普通表现组（前 300 字 / 第 1 条，共 ${controlTexts.length} 条）
+"""
+${controlTexts[0]?.slice(0, 300) || ''}
 """
 
 ## 输出 JSON
 {
   "content_type": "内容类型判断（探店/教程/挑战/情感/…）",
+  "viral_vs_control_summary": "高表现 vs 普通的最直观区别（1-2 句）",
   "target_audience": "目标受众画像",
-  "analysis_focus": "拆解重点应该放在哪个维度（hook/bait/retention/interaction/cta）",
-  "expected_drivers": "预判可能发现的爆款机制（1-2 句）",
+  "analysis_focus": "拆解重点应该放在哪个维度（hook/bait/retention/interaction/cta/info_density）",
+  "expected_drivers": "预判可能发现的爆款驱动要素（1-2 句）",
+  "shared_style_warning": "提醒：哪些看起来可能像驱动但其实是账号共有风格（避免误判）",
   "strategy": "分析策略一句话"
 }`;
 
-    onProgress && onProgress({ stage: 'planning', message: 'LLM 正在判断内容类型、制定拆解策略…' });
+    onProgress && onProgress({ stage: 'planning', message: 'LLM 正在对比 ${viralTexts.length} 高 vs ${controlTexts.length} 普通、制定拆解策略…' });
     const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent2-plan', maxTokens: 4000 });
     onProgress && onProgress({ stage: 'planned', message: '策略：' + (r.json.strategy || '').slice(0, 40) + '…，耗时 ' + r.elapsed + 'ms' });
     return r.json;
   }
 
-  // 第 3 步：LLM 自检二创质量
-  async function evaluateRemixes(remixes, analysis, viralText, onProgress) {
+  // 第 3 步：LLM 自检二创质量（针对对比拆解场景）
+  async function evaluateRemixes(remixes, analysis, viralTexts, onProgress) {
     const sys = `你是二创质量审核员。评估 3 条二创的差异化程度和可发布性。
-要严格——如果某条二创和原文太像，或者脚本质量太低，必须判 retry。返回严格 JSON。`;
+要严格——评估每条二创是否真正触发了 driving_factors、是否避开了 control_anti、是否套用了 account_template。
+如果哪条只是"看起来像"，或没真正触发 driving_factors，必须判 retry。返回严格 JSON。`;
 
-    const usr = `## 原爆款文本（前 300 字）
+    const usr = `## 高表现原文（合并前 300 字）
 """
-${viralText.slice(0, 300)}
+${viralTexts.map(t => t.slice(0, 300)).join('\n---\n')}
 """
 
-## 已完成拆解的 driving_factors
-${JSON.stringify(analysis.driving_factors)}
+## driving_factors（横向对比得出，必须触发）
+${JSON.stringify(analysis.driving_factors || [])}
+
+## account_template（账号风格骨架，必须套用）
+${analysis.account_template || ''}
+
+## control_anti（对照组踩的坑，必须避开）
+${JSON.stringify(analysis.control_anti || [])}
 
 ## 3 条二创
 ${JSON.stringify(remixes.map((r, i) => ({
@@ -486,6 +539,8 @@ ${JSON.stringify(remixes.map((r, i) => ({
   change: r.change,
   title: r.title,
   hook_3s: (r.hook_3s || '').slice(0, 60),
+  triggered_drivers: r.triggered_drivers,
+  avoided_anti: r.avoided_anti,
   similarity_final: r.similarity_final
 })), null, 2)}
 
@@ -494,83 +549,102 @@ ${JSON.stringify(remixes.map((r, i) => ({
   "overall_score": 78,
   "verdict": "pass",
   "per_remix": [
-    {"idx": 0, "score": 80, "issue": "或空字符串"},
+    {"idx": 0, "score": 80, "issue": "或空字符串", "drivers_hit": ["驱动的关键点"]},
     {"idx": 1, "score": 75, "issue": "钩子可以更强"},
     {"idx": 2, "score": 82, "issue": ""}
   ],
+  "drivers_triggered_ok": true,
+  "anti_patterns_avoided_ok": true,
   "differentiation_ok": true,
   "suggestions": ["改进建议1"]
 }
 
-verdict 规则：overall >= 70 且 differentiation_ok → "pass"；否则 → "retry"`;
+verdict 规则：overall >= 70 且 drivers_triggered_ok 和 differentiation_ok → "pass"；否则 → "retry"`;
 
-    onProgress && onProgress({ stage: 'evaluating', message: 'LLM 自检二创质量…' });
+    onProgress && onProgress({ stage: 'evaluating', message: 'LLM 自检二创质量（驱动要素触发检查）…' });
     const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent2-eval', maxTokens: 3000 });
     onProgress && onProgress({ stage: 'evaluated', message: '二创自检得分：' + r.json.overall_score + '/100，结论：' + (r.json.verdict === 'pass' ? '通过' : '需重试') });
     return r.json;
   }
 
-  // 带反馈重新生成二创
-  async function generateRemixWithFeedback(analysis, viralText, profile, evalResult, onProgress) {
+  // 带反馈重新生成二创（对比拆解版）
+  async function generateRemixWithFeedback(analysis, viralTexts, controlTexts, profile, evalResult, onProgress) {
     const sys = `你是爆款二次创作撰稿人。上次生成的二创未通过自检，请根据反馈重新生成。
-要针对指出的问题做实质改进，不能只是微调。返回严格 JSON。`;
+要针对指出的问题做实质改进（驱动要素触发 / 反例回避 / 差异化），不能只是微调同义词。
+返回严格 JSON。`;
 
     const usr = `## 账号
 ${JSON.stringify(profile)}
 
-## 拆解
+## 横向对比拆解
 ${JSON.stringify(analysis, null, 2)}
 
-## 原爆款文本（前 1500 字）
+## 高表现原文（前 1500 字）
 """
-${viralText.slice(0, 1500)}
+${viralTexts[0]?.slice(0, 1500) || ''}
 """
 
 ## 上次自检结果
 总分：${evalResult.overall_score}/100
 各条问题：${JSON.stringify(evalResult.per_remix)}
+drivers_triggered_ok=${evalResult.drivers_triggered_ok}
+anti_patterns_avoided_ok=${evalResult.anti_patterns_avoided_ok}
+differentiation_ok=${evalResult.differentiation_ok}
 建议：${JSON.stringify(evalResult.suggestions)}
 
 ## 任务
-基于 driving_factors 和 reusable_template 重新生成 3 条差异化二创。
-每条含 name、change、title、hook_3s、script_30s、hashtags、cta、similarity_self(0-100)。
+基于 driving_factors + account_template 重新生成 3 条差异化二创。
+注意：必须真正触发 driving_factors，避开 control_anti，与所有高表现原文显著不同。
+每条含 name, change, triggered_drivers, avoided_anti, title, hook_3s, script_30s, hashtags, cta, similarity_self(0-100)。
 返回 { remixes: [...] }。`;
 
-    onProgress && onProgress({ stage: 'regenerating', message: '根据自检反馈重新生成二创…' });
+    onProgress && onProgress({ stage: 'regenerating', message: '根据自检反馈重新生成二创（驱动要素再校准）…' });
     const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent2-regenerate', maxTokens: 8000 });
     onProgress && onProgress({ stage: 'regenerated', message: '重新生成完成，耗时 ' + r.elapsed + 'ms' });
     return r.json;
   }
 
-  // Agent 2 完整 loop：规划 → 拆解 → 生成二创 → 相似度 → 自检 → (重试)
+  // Agent 2 完整 loop：对比拆解（高表现 vs 普通）→ 生成二创 → 自检 → 重试
   async function runAgent2(opts) {
     const profile = opts.profile || loadProfile();
-    const viralText = (opts.viralText || '').trim();
-    if (!viralText || viralText.length < 30) {
-      throw new Error('请先粘贴爆款文本（至少 30 字）');
+    const viralTexts = (opts.viralTexts || []).filter(t => t && t.length >= 20);
+    const controlTexts = (opts.controlTexts || []).filter(t => t && t.length >= 20);
+
+    if (viralTexts.length === 0) {
+      throw new Error('请粘贴至少 1 条高表现内容（每条 ≥ 20 字）');
+    }
+    if (controlTexts.length === 0) {
+      throw new Error('请粘贴至少 1 条同账号普通表现内容用于对比（每条 ≥ 20 字）');
     }
 
-    opts.onProgress && opts.onProgress({ stage: 'input', message: '已收到爆款文本，共 ' + viralText.length + ' 字' });
+    opts.onProgress && opts.onProgress({
+      stage: 'input',
+      message: '已收到 ' + viralTexts.length + ' 条高表现 + ' + controlTexts.length + ' 条普通表现，准备横向对比'
+    });
 
-    // AGENT STEP 1: LLM 自主规划
-    const plan = await planAnalysis(viralText, profile, opts.onProgress);
+    // AGENT STEP 1: LLM 自主规划（含对比视角）
+    const plan = await planAnalysis(viralTexts, controlTexts, profile, opts.onProgress);
 
-    // AGENT STEP 2: LLM 5 维拆解
-    const analysis = await analyzeViral(viralText, profile, opts.onProgress);
+    // AGENT STEP 2: LLM 横向对比拆解
+    const analysis = await analyzeViral(viralTexts, controlTexts, profile, opts.onProgress);
 
-    // AGENT STEP 3: LLM 生成二创
-    const remixResult = await generateRemix(analysis, viralText, profile, opts.onProgress);
+    // AGENT STEP 3: LLM 生成差异化二创（基于对比结果）
+    const remixResult = await generateRemix(analysis, viralTexts, controlTexts, profile, opts.onProgress);
 
-    // AGENT STEP 4: 相似度校验
+    // AGENT STEP 4: 相似度校验（与所有高表现原文比对）
     const remixes = (remixResult.remixes || []).map(rx => {
-      const mySim = quickSimilarity(viralText, (rx.script_30s || '') + (rx.hook_3s || ''));
-      return { ...rx, similarity_calc: mySim, similarity_final: Math.max(rx.similarity_self || 0, mySim) };
+      let maxSim = 0;
+      for (const vt of viralTexts) {
+        const mySim = quickSimilarity(vt, (rx.script_30s || '') + (rx.hook_3s || ''));
+        if (mySim > maxSim) maxSim = mySim;
+      }
+      return { ...rx, similarity_calc: maxSim, similarity_final: Math.max(rx.similarity_self || 0, maxSim) };
     });
 
     // AGENT STEP 5: LLM 自检
-    let evalResult = await evaluateRemixes(remixes, analysis, viralText, opts.onProgress);
+    let evalResult = await evaluateRemixes(remixes, analysis, viralTexts, opts.onProgress);
 
-    // AGENT STEP 6: 自检不通过 → 带反馈重试（最多 2 次）
+    // AGENT STEP 6: 自检不通过 → 带反馈重试
     let retries = 0;
     let finalRemixes = remixes;
     while (evalResult.verdict === 'retry' && retries < 2) {
@@ -579,15 +653,22 @@ ${viralText.slice(0, 1500)}
         stage: 'retry',
         message: `自检未通过（${evalResult.overall_score}/100），LLM 决定第 ${retries} 次重试`
       });
-      const regenResult = await generateRemixWithFeedback(analysis, viralText, profile, evalResult, opts.onProgress);
+      const regenResult = await generateRemixWithFeedback(analysis, viralTexts, controlTexts, profile, evalResult, opts.onProgress);
       finalRemixes = (regenResult.remixes || []).map(rx => {
-        const mySim = quickSimilarity(viralText, (rx.script_30s || '') + (rx.hook_3s || ''));
-        return { ...rx, similarity_calc: mySim, similarity_final: Math.max(rx.similarity_self || 0, mySim) };
+        let maxSim = 0;
+        for (const vt of viralTexts) {
+          const mySim = quickSimilarity(vt, (rx.script_30s || '') + (rx.hook_3s || ''));
+          if (mySim > maxSim) maxSim = mySim;
+        }
+        return { ...rx, similarity_calc: maxSim, similarity_final: Math.max(rx.similarity_self || 0, maxSim) };
       });
-      evalResult = await evaluateRemixes(finalRemixes, analysis, viralText, opts.onProgress);
+      evalResult = await evaluateRemixes(finalRemixes, analysis, viralTexts, opts.onProgress);
     }
 
-    return { profile, plan, viralText, analysis, remixes: finalRemixes, evalResult, retries };
+    return {
+      profile, plan, viralTexts, controlTexts, analysis,
+      remixes: finalRemixes, evalResult, retries
+    };
   }
 
   // ============== 内容资产库 ==============

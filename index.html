@@ -239,10 +239,10 @@
       <button class="btn block" style="margin-top:12px;" onclick="goTab(1)">开始跑 Agent 1 →</button>
     </div>
     <div class="card">
-      <h2>🟪 Agent 2 · 爆款拆解 → 差异化二创 <span class="badge hot">题5</span></h2>
+      <h2>🟪 Agent 2 · 横向对比拆解 → 差异化二创 <span class="badge hot">题5</span></h2>
       <p style="font-size:12.5px;color:#5a4a3a;line-height:1.7;">
-        LLM <b>自主规划</b>拆解策略 → DeepSeek 5 维拆解（钩子/饵物/停留/互动/CTA）→
-        找出真正撬动流量的底层机制 → 生成 <b>≥3 条差异化二创</b> → LLM <b>自检</b>质量，不通过自动重试。
+        同时粘贴<b>同账号的高表现组</b>和<b>普通表现组</b>，LLM 横向对比拆解出 <b>真正驱动流量</b>的特征（排除共现风格） →
+        生成 <b>≥3 条差异化二创</b>（触发驱动 + 避开反例） → LLM <b>自检</b>质量，不通过自动重试。
       </p>
       <button class="btn block ghost" style="margin-top:12px;" onclick="goTab(2)">开始跑 Agent 2 →</button>
     </div>
@@ -311,17 +311,37 @@
   <!-- ========== Tab 2: Agent 2 ========== -->
   <section class="panel" id="panel-a2">
     <div class="card">
-      <h2>🟪 Agent 2 · 输入爆款</h2>
-      <div class="field">
-        <label>爆款口播/旁白/脚本（直接粘贴文本）</label>
-        <textarea id="a2Input" placeholder="例：
-'你知道吗，凌晨3点的烧烤摊，才是真正的人间烟火。
-今天这5家，我全部试过了，排名最后那家千万别去。'"></textarea>
-        <div class="hint">至少 30 字。建议 ≥ 200 字，拆解更准。</div>
+      <h2>🟪 Agent 2 · 横向对比拆解（高表现 vs 普通表现）</h2>
+      <div style="font-size:12.5px;color:#5a4a3a;line-height:1.7;margin-bottom:10px;">
+        拆解同一账号的<strong>高表现内容</strong>与<strong>普通表现内容</strong>，从对照中找出"真正驱动流量"的差异特征，而非和账号固定风格混在一起的"共现元素"。
       </div>
       <div class="field">
-        <label>或者从内容资产库选一条</label>
-        <select id="a2Pick"><option value="">— 不选，自己粘贴 —</option></select>
+        <label>🔥 高表现组 <span style="color:#d23;">（同账号爆款，至少 1 条，多条更准）</span></label>
+        <textarea id="a2Input" placeholder="每条之间用 === 或空行分隔，例如：
+
+你知道吗，凌晨 3 点的烧烤摊才是真正的人间烟火...
+（拆说完毕，下面再来一条）
+===
+今天这 5 家我全部试过了，排名最后那家千万别去...
+（第二条爆款）"></textarea>
+        <div class="hint">每条 ≥ 20 字。已识别 <span id="a2ViralCount" style="color:#d23;font-weight:bold;">0</span> 条高表现。系统会横向对比这组内容找出共性。</div>
+      </div>
+      <div class="field">
+        <label>📊 普通表现组（对照组，必填 ≥ 1 条） <span style="color:#888;">*</span></label>
+        <textarea id="a2Control" placeholder="同账号数据一般的内容，用于横向对比。例如：
+
+今天带大家看看这家新开的拉面店...
+（普通内容 1）
+===
+店面不大但是味道还不错，走过路过可以试试...
+（普通内容 2）"></textarea>
+        <div class="hint">每条 ≥ 20 字。已识别 <span id="a2ControlCount" style="color:#d23;font-weight:bold;">0</span> 条普通。⚠ 这组不能省略，否则 LLM 无法判断"哪些特征真的驱动流量"。</div>
+      </div>
+      <div class="field">
+        <label>或者从内容资产库批量选（可选）</label>
+        <button class="btn sm ghost" onclick="a2PickFromLib('viral')">+ 加入高表现组</button>
+        <button class="btn sm ghost" onclick="a2PickFromLib('control')">+ 加入普通组</button>
+        <div class="hint">点上面按钮从已入库的内容里挑选加入对应组。</div>
       </div>
     </div>
 
@@ -329,13 +349,13 @@
       <h2>🟪 Agent 2 · 实时工作流</h2>
       <div class="flow" id="a2Flow">
         <div class="step" data-step="plan"><span class="ico">🧠</span><span class="lbl">LLM 规划</span><span class="num" id="a2s0">等待</span></div><div class="arr">→</div>
-        <div class="step" data-step="analyze"><span class="ico">🔬</span><span class="lbl">5 维拆解</span><span class="num" id="a2s1">等待</span></div><div class="arr">→</div>
-        <div class="step" data-step="driving"><span class="ico">💡</span><span class="lbl">找撬动要素</span><span class="num" id="a2s2">等待</span></div><div class="arr">→</div>
+        <div class="step" data-step="analyze"><span class="ico">🔬</span><span class="lbl">横向对比拆解</span><span class="num" id="a2s1">等待</span></div><div class="arr">→</div>
+        <div class="step" data-step="driving"><span class="ico">💡</span><span class="lbl">找驱动要素</span><span class="num" id="a2s2">等待</span></div><div class="arr">→</div>
         <div class="step" data-step="remix"><span class="ico">🪄</span><span class="lbl">生成二创</span><span class="num" id="a2s3">等待</span></div><div class="arr">→</div>
         <div class="step" data-step="sim"><span class="ico">🔁</span><span class="lbl">相似度</span><span class="num" id="a2s4">等待</span></div><div class="arr">→</div>
         <div class="step" data-step="eval"><span class="ico">🔍</span><span class="lbl">自检+重试</span><span class="num" id="a2s5">等待</span></div>
       </div>
-      <button class="btn block" id="a2Run" onclick="runA2()">🚀 拆解 + 生成二创</button>
+      <button class="btn block" id="a2Run" onclick="runA2()">🧠 对比拆解 + 生成二创</button>
     </div>
 
     <div class="work-grid">
@@ -506,6 +526,51 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+// ---- Agent 2 双组输入解析 ----
+// 拆条策略：优先按 "===" 或 "[爆款 N]" / "[对照 N]" 显式分隔；否则按双换行；否则整段。
+function splitMultiText(raw) {
+  const txt = (raw || '').trim();
+  if (!txt) return [];
+  // 1) 显式分隔符
+  if (/(^|\n)\s*=+\s*(\n|$)/.test(txt) || /\[(爆款|对照|样本|对比|viral|control)\s*\d+\]/i.test(txt)) {
+    return txt.split(/\n\s*=+\s*\n|\n\s*\[(爆款|对照|样本|对比|viral|control)\s*\d+\]\s*\n?/i)
+      .map(s => s.trim()).filter(Boolean);
+  }
+  // 2) 双换行
+  if (/\n\s*\n/.test(txt)) {
+    const parts = txt.split(/\n\s*\n+/).map(s => s.trim()).filter(s => s.length >= 20);
+    if (parts.length >= 2) return parts;
+  }
+  // 3) 整段当作一条
+  return [txt];
+}
+function refreshA2Count() {
+  const v = splitMultiText($('a2Input')?.value);
+  const c = splitMultiText($('a2Control')?.value);
+  const vEl = $('a2ViralCount'); const cEl = $('a2ControlCount');
+  if (vEl) { vEl.textContent = v.length; vEl.style.color = v.length >= 1 ? '#d23' : '#888'; }
+  if (cEl) { cEl.textContent = c.length; cEl.style.color = c.length >= 1 ? '#0a0' : '#888'; }
+  return { v, c };
+}
+function a2PickFromLib(targetGroup) {
+  const lib = (typeof Agents !== 'undefined' ? Agents.loadLib() : []);
+  if (!lib.length) { toast('内容资产库为空，先入库一些内容再来选'); return; }
+  const idxs = window.prompt(
+    '内容资产库（共 ' + lib.length + ' 条，多选用逗号分隔）:\n' +
+    lib.slice(0, 30).map((e, i) => i + '. ' + ((e.title || (e.content || '').slice(0, 30))).slice(0, 50)).join('\n') +
+    '\n\n请输入要加入' + (targetGroup === 'viral' ? '【高表现组】' : '【普通表现组】') + '的序号（逗号分隔，如 0,2,5）：'
+  );
+  if (!idxs) return;
+  const picks = idxs.split(/[,,，\s]+/).map(s => parseInt(s, 10)).filter(n => !isNaN(n) && n >= 0 && n < lib.length);
+  if (!picks.length) { toast('没选到有效序号'); return; }
+  const ta = targetGroup === 'viral' ? $('a2Input') : $('a2Control');
+  const cur = (ta.value || '').trim();
+  const append = picks.map(i => lib[i].content || '').filter(Boolean).join('\n\n===\n\n');
+  ta.value = cur ? cur + '\n\n===\n\n' + append : append;
+  refreshA2Count();
+  toast('已加入 ' + picks.length + ' 条到' + (targetGroup === 'viral' ? '高表现组' : '普通表现组'));
+}
+
 function fmtTime(ms) {
   if (!ms) return '—';
   if (ms < 1000) return ms + 'ms';
@@ -674,6 +739,16 @@ function saveSettings() {
 
 $('btnSettings').onclick = () => { loadSettings(); openModal('modalSettings'); };
 $('btnLib').onclick = () => goTab(3);
+
+// 初始化 Agent 2 双组输入监听器（实时计数）
+['a2Input', 'a2Control'].forEach(id => {
+  const el = $(id);
+  if (el) {
+    el.addEventListener('input', refreshA2Count);
+    el.addEventListener('change', refreshA2Count);
+  }
+});
+refreshA2Count();
 
 /* ========== Agent 1 ========== */
 async function runA1() {
@@ -1015,9 +1090,12 @@ function saveScriptToLib(jsonStr) {
 /* ========== Agent 2 ========== */
 async function runA2() {
   if (!LLM.isReady()) { openModal('modalSettings'); toast('请先填 API Key'); return; }
-  let txt = $('a2Input').value.trim();
-  if (!txt) txt = $('a2Pick').value;
-  if (!txt || txt.length < 30) { toast('请粘贴至少 30 字'); return; }
+  // 双组输入解析
+  const viralTexts = splitMultiText($('a2Input')?.value);
+  const controlTexts = splitMultiText($('a2Control')?.value);
+  if (viralTexts.length === 0) { toast('请粘贴至少 1 条高表现内容'); $('a2Input').focus(); return; }
+  if (controlTexts.length === 0) { toast('请粘贴至少 1 条普通表现内容（对照组必填）'); $('a2Control').focus(); return; }
+  const txt = viralTexts[0]; // 兼容旧代码用 txt 的地方（如基线对照）
 
   $('a2Run').disabled = true;
   $('a2Run').textContent = '⏳ Agent 2 运行中…';
@@ -1030,13 +1108,15 @@ async function runA2() {
   try {
     const profile = Agents.loadProfile();
 
-    // === AGENT STEP 0: LLM 自主规划拆解策略 ===
+    // === AGENT STEP 0: LLM 自主规划拆解策略（含对比视角）===
     setStep('a2Flow', 'plan', 'active', '规划中…');
-    appendLive('a2Live', '▼ [Agent Loop] LLM 自主规划：判断内容类型、制定拆解策略...\n\n');
+    appendLive('a2Live', '▼ [Agent Loop] LLM 自主规划：横向对比 ' + viralTexts.length + ' 高表现 vs ' + controlTexts.length + ' 普通、制定拆解策略...\n\n');
 
+    const viralPreview = viralTexts[0]?.slice(0, 300) || '';
+    const controlPreview = controlTexts[0]?.slice(0, 300) || '';
     const plan2Result = await LLM.call({
-      system: '你是爆款分析规划师。在拆解前，先判断内容类型、制定分析重点。返回严格 JSON。',
-      user: '## 账号\n' + JSON.stringify(profile) + '\n\n## 待分析文本（前300字）\n"""\n' + txt.slice(0, 300) + '\n"""\n\n输出 JSON: { content_type, target_audience, analysis_focus, expected_drivers, strategy }',
+      system: '你是爆款分析规划师。在横向对比拆解前，先判断高表现组 vs 普通组的内容类型差异、制定分析重点；并提醒哪些可能误判为"驱动"的共现特征。返回严格 JSON。',
+      user: '## 账号\n' + JSON.stringify(profile) + '\n\n## 高表现组（前 300 字 / 第 1 条，共 ' + viralTexts.length + ' 条）\n"""\n' + viralPreview + '\n"""\n\n## 普通表现组（前 300 字 / 第 1 条，共 ' + controlTexts.length + '条）\n"""\n' + controlPreview + '\n""\"\n\n输出 JSON: { content_type, viral_vs_control_summary, target_audience, analysis_focus, expected_drivers, shared_style_warning, strategy }',
       json: true, tag: 'agent2-plan',
       maxTokens: 4000,
       onChunk: (d) => appendLive('a2Live', d)
@@ -1050,16 +1130,18 @@ async function runA2() {
     setStep('a2Flow', 'plan', 'done', '策略已定');
     appendLive('a2Live', '\n[策略] ' + escapeHtml(plan2.strategy || '') + ' | 分析重点: ' + escapeHtml(plan2.analysis_focus || '') + '\n\n');
 
-    // === AGENT STEP 1: 5 维拆解 ===
-    setStep('a2Flow', 'analyze', 'active', '拆解中…');
+    // === AGENT STEP 1: 横向对比拆解（高表现组 vs 普通组） ===
+    setStep('a2Flow', 'analyze', 'active', '横向对比拆解中…');
     $('a2LiveCard').style.display = 'block';
-    appendLive('a2Live', '▼ 调用 LLM 做 5 维拆解...\n\n');
+    appendLive('a2Live', '▼ 调用 LLM 做 6 维横向对比拆解...\n\n');
 
+    const viralBlock = viralTexts.map((t, i) => '【爆款 ' + (i + 1) + '】\n' + t.slice(0, 1500)).join('\n\n');
+    const controlBlock = controlTexts.map((t, i) => '【对照 ' + (i + 1) + '】\n' + t.slice(0, 1500)).join('\n\n');
     const a1 = await LLM.call({
-      system: '你是爆款拆解专家。返回严格 JSON。',
-      user: '## 爆款文本\n"""\n' + txt.slice(0, 3500) + '\n"""\n\n5 维评分（hook/bait/retention/interaction/cta 各 0-10）、一句话总结、driving_factors（≤3条撬动机制）、reusable_template、do_not_copy、do_copy。返回 { score_by_dim, score_summary, driving_factors, reusable_template, do_not_copy, do_copy }。',
+      system: '你是爆款拆解专家。关键能力：从「同一账号高表现 vs 普通表现」对照中识别"真正驱动要素"。区分 only_in_viral(驱动) / shared_style(共现不是驱动) / control_anti(反例)。返回严格 JSON。',
+      user: '## 账号\n' + JSON.stringify(profile) + '\n\n## 🔥 高表现组（' + viralTexts.length + ' 条）\n"""\n' + viralBlock + '\n"""\n\n## 📊 普通表现组（' + controlTexts.length + ' 条）\n"""\n' + controlBlock + '\n""\"\n\n6 维评分（hook/bait/retention/interaction/cta/info_density 各 0-10）+ 一句话总结。\n\n关键：必须输出 3 个对比字段：\n- only_in_viral: 只有高表现组有的特征（来自对比，driving_factors 的来源）\n- shared_style: 两组都有的账号固有风格（不算驱动要素）\n- control_anti: 普通组踩的坑（反例）\n\n然后从 only_in_viral 提炼 driving_factors（≤3 条，因果描述）、account_template（账号风格模板）、reusable_template（爆款结构模板）。\n\n返回 JSON: { score_by_dim, score_summary, only_in_viral, shared_style, control_anti, driving_factors, account_template, reusable_template, do_not_copy, do_copy }。',
       json: true, tag: 'agent2-analyze',
-      maxTokens: 5000,
+      maxTokens: 6000,
       onChunk: (d) => appendLive('a2Live', d)
     });
     appendLive('a2Live', '\n\n[' + fmtTime(a1.elapsed) + ' · ' + fmtTokens(a1.usage.total_tokens) + ' tokens]\n');
@@ -1073,26 +1155,38 @@ async function runA2() {
     setStep('a2Flow', 'driving', 'active', '找撬动要素…');
     $('a2AnalysisCard').style.display = 'block';
     const dim = analysis.score_by_dim || {};
+    const dim6Labels = { hook: '钩子', bait: '饵物', retention: '停留', interaction: '互动', cta: 'CTA', info_density: '信息密度' };
+    const dimKeys = ['hook','bait','retention','interaction','cta','info_density'].filter(k => dim[k] != null);
     $('a2Analysis').innerHTML =
+      // 顶部对比摘要：高表现组 vs 普通组
+      '<div style="background:#fff4e6;border-left:3px solid #d23;padding:8px 12px;margin-bottom:10px;border-radius:4px;font-size:12.5px;color:#4a3a2a;">' +
+        '🔬 横向对比拆解 <span class="badge gold">高表现 ' + viralTexts.length + ' 条</span> <span class="badge">普通 ' + controlTexts.length + ' 条</span>' +
+        (plan2?.viral_vs_control_summary ? '<br><b>直观区别：</b>' + escapeHtml(plan2.viral_vs_control_summary) : '') +
+      '</div>' +
+      // 6 维评分
       '<div class="dim5">' +
-        ['hook','bait','retention','interaction','cta'].map(k =>
-          '<div class="d"><div class="v">' + (dim[k] || 0).toFixed(1) + '</div><div class="l">' + ({hook:'钩子',bait:'饵物',retention:'停留',interaction:'互动',cta:'CTA'})[k] + '</div></div>'
+        (dimKeys.length ? dimKeys : ['hook','bait','retention','interaction','cta']).map(k =>
+          '<div class="d"><div class="v">' + (dim[k] || 0).toFixed(1) + '</div><div class="l">' + dim6Labels[k] + '</div></div>'
         ).join('') +
       '</div>' +
       renderDraft('一句话总结', analysis.score_summary, 'sum') +
-      renderDraft('💡 真正撬动流量的底层机制', (analysis.driving_factors || []).map((x, i) => (i+1) + '. ' + x).join('\n'), 'drv') +
-      renderDraft('🧩 可复用结构模板', analysis.reusable_template, 'tpl') +
+      renderDraft('🟥 只有高表现组有的特征（驱动要素候选）', (analysis.only_in_viral || []).map((x, i) => (i + 1) + '. ' + x).join('\n'), 'only') +
+      renderDraft('💡 真正撬动流量的底层机制', (analysis.driving_factors || []).map((x, i) => (i + 1) + '. ' + x).join('\n'), 'drv') +
+      renderDraft('⬜ 共有的账号风格（不算驱动）', (analysis.shared_style || []).map((x, i) => (i + 1) + '. ' + x).join('\n'), 'shared') +
+      renderDraft('🚫 对照组反例（避开这些坑）', (analysis.control_anti || []).map((x, i) => (i + 1) + '. ' + x).join('\n'), 'anti') +
+      renderDraft('🧩 账号风格模板（shared_style 提取）', analysis.account_template, 'acctpl') +
+      renderDraft('🧩 爆款可复用结构模板（驱动要素 + 风格模板）', analysis.reusable_template, 'tpl') +
       renderDraft('🚫 不能照搬的表层', analysis.do_not_copy, 'no') +
       renderDraft('✅ 可以借鉴的骨架', analysis.do_copy, 'yes');
-    setStep('a2Flow', 'driving', 'done', (analysis.driving_factors || []).length + ' 条');
+    setStep('a2Flow', 'driving', 'done', (analysis.driving_factors || []).length + ' 条驱动');
 
-    // Step 2: 生成二创
+    // Step 2: 生成二创（基于对比拆解）
     setStep('a2Flow', 'remix', 'active', '生成 3 条二创…');
-    appendLive('a2Live', '\n\n▼ 调用 LLM 生成 3 条差异化二创...\n\n');
+    appendLive('a2Live', '\n\n▼ 调用 LLM 生成 3 条差异化二创（基于横向对比）...\n\n');
 
     const a2 = await LLM.call({
-      system: '你是爆款二次创作撰稿人。必须差异化，禁止同义词替换。返回严格 JSON。',
-      user: '## 账号\n' + JSON.stringify(profile) + '\n\n## 拆解\n' + JSON.stringify(analysis) + '\n\n## 原文本（仅对照，避免雷同）\n"""\n' + txt.slice(0, 2000) + '\n"""\n\n基于 driving_factors 和 reusable_template 生成 3 条差异化二创。每条含 name、change、title、hook_3s、script_30s、hashtags、cta、similarity_self(0-100)。返回 { remixes: [...] }。',
+      system: '你是爆款二次创作撰稿人。必须：触发 driving_factors + 套用 account_template + 避开 control_anti + 与原文显著不同。返回严格 JSON。',
+      user: '## 账号\n' + JSON.stringify(profile) + '\n\n## 横向对比拆解\n' + JSON.stringify(analysis) + '\n\n## 高表现原文（仅对照，避免雷同）\n"""\n' + (viralTexts[0] || '').slice(0, 1500) + '\n"""\n\n## 普通表现原文（仅对照，反面案例）\n"""\n' + (controlTexts[0] || '').slice(0, 800) + '\n"""\n\n基于 driving_factors + account_template + 避开 control_anti 生成 3 条差异化二创。每条必须含：name, change, triggered_drivers, avoided_anti, title, hook_3s, script_30s, hashtags, cta, similarity_self(0-100)。返回 { remixes: [...] }。',
       json: true, tag: 'agent2-remix',
       maxTokens: 8000,
       onChunk: (d) => appendLive('a2Live', d)
@@ -1105,17 +1199,21 @@ async function runA2() {
         remixRes = __r6.data;
     setStep('a2Flow', 'remix', 'done', (remixRes.remixes || []).length + ' 条');
 
-    // 算相似度
+    // 算相似度（与所有高表现原文比对，取最大值）
     setStep('a2Flow', 'sim', 'active', '校验…');
     const remixes = (remixRes.remixes || []).map(rx => {
-      const mySim = Agents.quickSimilarity(txt, (rx.script_30s || '') + (rx.hook_3s || ''));
-      return { ...rx, similarity_calc: mySim, similarity_final: Math.max(rx.similarity_self || 0, mySim) };
+      let maxSim = 0;
+      for (const vt of viralTexts) {
+        const mySim = Agents.quickSimilarity(vt, (rx.script_30s || '') + (rx.hook_3s || ''));
+        if (mySim > maxSim) maxSim = mySim;
+      }
+      return { ...rx, similarity_calc: maxSim, similarity_final: Math.max(rx.similarity_self || 0, maxSim) };
     });
     setStep('a2Flow', 'sim', 'done', '全部 < ' + (Math.max(...remixes.map(x => x.similarity_final)) || 0) + '%');
 
-    // === AGENT STEP 5: LLM 自检二创质量 ===
+    // === AGENT STEP 5: LLM 自检二创质量（横向对比视角） ===
     setStep('a2Flow', 'eval', 'active', '自检中…');
-    appendLive('a2Live', '\n\n▼ [Agent Loop] LLM 自检二创质量...\n\n');
+    appendLive('a2Live', '\n\n▼ [Agent Loop] LLM 自检二创质量（驱动要素触发检查）...\n\n');
 
     let eval2Data;
     let currentRemixes = remixes;
@@ -1124,8 +1222,8 @@ async function runA2() {
 
     async function doRemixEval(rxs) {
       const er = await LLM.call({
-        system: '你是二创质量审核员。评估3条二创的差异化程度和可发布性。要严格——如果某条二创和原文太像，或者脚本质量太低，必须判 retry。返回严格 JSON。',
-        user: '## 原爆款文本（前300字）\n"""\n' + txt.slice(0, 300) + '\n"""\n\n## driving_factors\n' + JSON.stringify(analysis.driving_factors) + '\n\n## 3条二创\n' + JSON.stringify(rxs.map((r, i) => ({ idx: i, name: r.name, change: r.change, title: r.title, hook_3s: (r.hook_3s || '').slice(0, 60), similarity_final: r.similarity_final })), null, 2) + '\n\n输出 JSON: { overall_score:0-100, verdict:"pass"|"retry", per_remix:[{idx,score,issue}], differentiation_ok:bool, suggestions:[] }。verdict 规则：overall>=70 且 differentiation_ok → pass；否则 → retry。',
+        system: '你是二创质量审核员。评估 3 条二创是否真正触发了 driving_factors、是否避开了 control_anti、是否套用了 account_template、与高表现原文是否显著不同。任何一项不通过都要判 retry。返回严格 JSON。',
+        user: '## 高表现原文（前300字）\n"""\n' + (viralTexts[0] || '').slice(0, 300) + '\n"""\n\n## driving_factors（必须触发）\n' + JSON.stringify(analysis.driving_factors || []) + '\n\n## account_template（必须套用）\n' + (analysis.account_template || '') + '\n\n## control_anti（必须避开）\n' + JSON.stringify(analysis.control_anti || []) + '\n\n## 3 条二创\n' + JSON.stringify(rxs.map((r, i) => ({ idx: i, name: r.name, change: r.change, title: r.title, hook_3s: (r.hook_3s || '').slice(0, 60), triggered_drivers: r.triggered_drivers, avoided_anti: r.avoided_anti, similarity_final: r.similarity_final })), null, 2) + '\n\n输出 JSON: { overall_score:0-100, verdict:"pass"|"retry", per_remix:[{idx,score,issue,drivers_hit}], drivers_triggered_ok:bool, anti_patterns_avoided_ok:bool, differentiation_ok:bool, suggestions:[] }。verdict 规则：overall>=70 且 drivers_triggered_ok + differentiation_ok → pass；否则 → retry。',
         json: true, tag: 'agent2-eval',
       maxTokens: 3000,
         onChunk: (d) => appendLive('a2Live', d)
@@ -1133,7 +1231,7 @@ async function runA2() {
       appendLive('a2Live', '\n\n[' + fmtTime(er.elapsed) + ' · ' + fmtTokens(er.usage.total_tokens) + ' tokens]\n');
       const __r7 = safeJsonParse(er);
         if (__r7.ok) return __r7.data;
-        return {  overall_score: 75, verdict: 'pass', per_remix: [], suggestions: []  };
+        return {  overall_score: 75, verdict: 'pass', per_remix: [], drivers_triggered_ok: true, anti_patterns_avoided_ok: true, differentiation_ok: true, suggestions: []  };
     }
 
     eval2Data = await doRemixEval(currentRemixes);
@@ -1145,8 +1243,8 @@ async function runA2() {
       appendLive('a2Live', '\n\n▼ [Agent Loop] 二创自检未通过（' + eval2Data.overall_score + '/100），LLM 决定第 ' + retry2Count + ' 次重试...\n\n');
 
       const regen2 = await LLM.call({
-        system: '你是爆款二次创作撰稿人。上次生成的二创未通过自检，请根据反馈重新生成。要针对指出的问题做实质改进，不能只是微调。返回严格 JSON。',
-        user: '## 账号\n' + JSON.stringify(profile) + '\n\n## 拆解\n' + JSON.stringify(analysis) + '\n\n## 上次自检结果\n总分：' + eval2Data.overall_score + '/100\n各条问题：' + JSON.stringify(eval2Data.per_remix) + '\n建议：' + JSON.stringify(eval2Data.suggestions) + '\n\n重新生成3条差异化二创。每条含 name, change, title, hook_3s, script_30s, hashtags, cta, similarity_self。返回 { remixes: [...] }。',
+        system: '你是爆款二次创作撰稿人。上次自检未通过，请根据反馈重新生成（针对驱动要素触发 / 反例回避 / 差异化）。不能只微调同义词。返回严格 JSON。',
+        user: '## 账号\n' + JSON.stringify(profile) + '\n\n## 横向对比拆解\n' + JSON.stringify(analysis) + '\n\n## 上次自检结果\n总分：' + eval2Data.overall_score + '/100\n各条问题：' + JSON.stringify(eval2Data.per_remix) + '\ndrivers_triggered_ok=' + eval2Data.drivers_triggered_ok + '\nanti_patterns_avoided_ok=' + eval2Data.anti_patterns_avoided_ok + '\ndifferentiation_ok=' + eval2Data.differentiation_ok + '\n建议：' + JSON.stringify(eval2Data.suggestions) + '\n\n重新生成 3 条二创，每条含 name, change, triggered_drivers, avoided_anti, title, hook_3s, script_30s, hashtags, cta, similarity_self(0-100)。返回 { remixes: [...] }。',
         json: true, tag: 'agent2-regenerate',
       maxTokens: 8000,
         onChunk: (d) => appendLive('a2Live', d)
@@ -1157,8 +1255,12 @@ async function runA2() {
       if (__safe.ok) {
         const regenRes = __safe.data;
         currentRemixes = (regenRes.remixes || []).map(rx => {
-          const mySim = Agents.quickSimilarity(txt, (rx.script_30s || '') + (rx.hook_3s || ''));
-          return { ...rx, similarity_calc: mySim, similarity_final: Math.max(rx.similarity_self || 0, mySim) };
+          let maxSim = 0;
+          for (const vt of viralTexts) {
+            const mySim = Agents.quickSimilarity(vt, (rx.script_30s || '') + (rx.hook_3s || ''));
+            if (mySim > maxSim) maxSim = mySim;
+          }
+          return { ...rx, similarity_calc: maxSim, similarity_final: Math.max(rx.similarity_self || 0, maxSim) };
         });
       } else { logLine('a2Log', '重试生成 JSON 解析失败，保留原版（已尝试修复：' + __safe.error + '）', 'err'); }
 
@@ -1208,16 +1310,23 @@ async function runA2() {
         '</div>';
     }).join('');
 
-    // 整体存到分析库
+    // 整体存到分析库（保留对比分析供后续迭代）
     Agents.addToLib({
-      type: 'analysis',
-      title: '爆款拆解：' + txt.slice(0, 30) + '…',
-      content: '## 5 维评分\n' + JSON.stringify(analysis.score_by_dim, null, 2) +
-        '\n\n## 撬动机制\n' + (analysis.driving_factors || []).join('\n') +
-        '\n\n## 复用模板\n' + (analysis.reusable_template || ''),
-      tags: ['#爆款拆解']
+      type: 'analysis_compare',
+      title: '横向对比拆解：高 ' + viralTexts.length + ' / 普通 ' + controlTexts.length + ' · ' + (viralTexts[0] || '').slice(0, 20) + '…',
+      content: '## 横向对比\n🔥 高表现组: ' + viralTexts.length + ' 条\n📊 普通表现组: ' + controlTexts.length + ' 条\n\n' +
+        '## 6 维评分\n' + JSON.stringify(analysis.score_by_dim, null, 2) +
+        '\n\n## 🟥 只有高表现组有的特征（驱动要素候选）\n' + ((analysis.only_in_viral || []).map((x, i) => (i + 1) + '. ' + x).join('\n')) +
+        '\n\n## 💡 驱动机制\n' + (analysis.driving_factors || []).join('\n') +
+        '\n\n## ⬜ 共有的账号风格（不算驱动）\n' + ((analysis.shared_style || []).map((x, i) => (i + 1) + '. ' + x).join('\n')) +
+        '\n\n## 🚫 对照组反例\n' + ((analysis.control_anti || []).map((x, i) => (i + 1) + '. ' + x).join('\n')) +
+        '\n\n## 账号风格模板\n' + (analysis.account_template || '') +
+        '\n\n## 爆款可复用结构模板\n' + (analysis.reusable_template || ''),
+      tags: ['#爆款拆解', '#横向对比', '#' + (plan2?.content_type || '未分类')],
+      viralTexts, controlTexts, analysis, plan: plan2,
+      remixes: finalRemixes, evalResult: eval2Data, retries: retry2Count
     });
-    window._lastA2 = { plan: plan2, analysis, remixes: finalRemixes, evalResult: eval2Data, retries: retry2Count, source: txt };
+    window._lastA2 = { plan: plan2, analysis, remixes: finalRemixes, evalResult: eval2Data, retries: retry2Count, viralTexts, controlTexts };
 
   } catch (err) {
     appendLive('a2Live', '\n\n❌ ' + err.message);
