@@ -5,6 +5,15 @@
 
 ---
 
+## 在线 Demo
+
+- **GitHub Pages**：<https://zhang22935.github.io/muxu-agent/>
+- **仓库地址**：<https://github.com/zhang22935/muxu-agent>
+
+打开即用，在「设置」中填入 DeepSeek API Key 即可跑完整工作流。
+
+---
+
 ## 一句话总结
 
 打开 `index.html` → 设置里填 DeepSeek Key → 一键跑两个 Agent，**0 假数据，0 字符串拼接，0 前端 mock**。
@@ -15,13 +24,14 @@
 
 ```
 agent-demo/
-├── index.html        # UI 主体（约 600 行，单页 4 Tab）
-├── llm.js            # DeepSeek 客户端（OpenAI 兼容协议，含流式/重试/tracing）
-├── fetchers.js       # 多源真实抓取（微博/头条/B站/百度）+ CORS 代理策略
-├── agents.js         # Agent 1 / Agent 2 业务逻辑（真正调用 LLM）
-├── proxy-example.js  # 30 秒可起的本地 CORS 代理（Node.js）
-├── manifest.json     # PWA 配置
-└── README.md         # 本文件
+├── index.html                # UI 主体（单页 4 Tab + 2 Modal）
+├── llm.js                    # DeepSeek 客户端（OpenAI 兼容，含流式/重试/tracing）
+├── fetchers.js               # 多源真实抓取（头条/B站/百度/抖音）+ CORS 代理策略
+├── agents.js                 # Agent 1 / Agent 2 业务逻辑（真正调用 LLM）
+├── proxy-example.js          # 本地 CORS 代理（Node.js，30 秒可起）
+├── proxy-cloudflare-worker.js # Cloudflare Worker 版公网代理（推荐）
+├── manifest.json             # PWA 配置
+└── README.md                 # 本文件
 ```
 
 ---
