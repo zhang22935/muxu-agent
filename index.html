@@ -166,6 +166,33 @@
 
   .lib-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 
+  /* 候选池卡片 */
+  .cand-card{border:1px solid var(--line);border-radius:12px;padding:13px 15px;margin-bottom:12px;background:var(--card);transition:.15s;}
+  .cand-card.adopted{border-left:4px solid var(--accent-2);background:linear-gradient(to right,#ebfbee 0%,#fff 30%);}
+  .cand-card.rejected{border-left:4px solid #aaa;background:linear-gradient(to right,#f3f3f3 0%,#fff 30%);opacity:.85;}
+  .cand-card.pending{border-left:4px solid var(--gold);background:linear-gradient(to right,#fff9db 0%,#fff 18%);}
+  .cand-card .head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px;}
+  .cand-card .ttl{font-size:13.5px;font-weight:600;line-height:1.5;flex:1;}
+  .cand-card .src{font-size:11px;color:var(--sub);margin-bottom:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .cand-card .field{display:grid;grid-template-columns:80px 1fr;gap:8px;padding:6px 8px;border-radius:8px;margin-bottom:4px;font-size:12.5px;line-height:1.65;}
+  .cand-card .field .lab{font-size:10.5px;font-weight:600;color:var(--sub);text-transform:uppercase;letter-spacing:.5px;align-self:start;padding-top:2px;}
+  .cand-card .field .val{color:#2d2a26;}
+  .cand-card .field.en{background:#f4f8ff;}
+  .cand-card .field.summary{background:#fff8e8;}
+  .cand-card .field.angle{background:#fff0e6;}
+  .cand-card .scores-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+  .cand-card .scores-row .sc{font-size:10.5px;background:#f7f2ea;color:#5a4a3a;padding:3px 8px;border-radius:6px;}
+  .cand-card .sc.total{background:var(--accent);color:#fff;font-weight:700;}
+  .cand-card .reason{font-size:11.5px;color:#7a5a3a;background:#fdf6ec;padding:6px 9px;border-radius:8px;margin-top:7px;line-height:1.6;}
+  .cand-card .decision-note{font-size:12px;color:#4a3a2a;background:#fafafa;padding:7px 10px;border-radius:8px;margin-top:8px;line-height:1.6;border-left:3px solid var(--sub);}
+  .cand-card .decision-actions{display:flex;gap:6px;margin-top:10px;align-items:center;flex-wrap:wrap;}
+  .cand-card .decision-actions input{flex:1;min-width:140px;font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fdfbf7;}
+  .cand-card .history{font-size:11px;color:#888;margin-top:6px;line-height:1.5;}
+  .cand-empty{text-align:center;color:var(--sub);padding:42px 0;font-size:13px;}
+  .badge.pending{background:var(--gold-soft);color:#7d6608;}
+  .badge.adopted{background:#ebfbee;color:var(--accent-2);}
+  .badge.rejected{background:#eee;color:#888;}
+
   /* 评分列表紧凑化（桌面） */
   .topic{padding:14px 16px;}
 
@@ -208,6 +235,7 @@
     <button class="tab" data-tab="1" onclick="goTab(1)"><span class="ti">🟧</span><span>热点→爆款</span></button>
     <button class="tab" data-tab="2" onclick="goTab(2)"><span class="ti">🟪</span><span>拆解→二创</span></button>
     <button class="tab" data-tab="3" onclick="goTab(3)"><span class="ti">📚</span><span>资产库</span></button>
+    <button class="tab" data-tab="4" onclick="goTab(4)"><span class="ti">🟡</span><span>候选池</span></button>
   </nav>
   <div class="greeting" id="greeting">
     欢迎回来～先点右上角 <b>⚙️ 设置</b> 填入 DeepSeek API Key（必须），再选是否要配代理抓真实热点。
@@ -225,6 +253,7 @@
       </p>
       <div class="kpi-row" style="margin-top:14px;">
         <div class="kpi"><div class="v" id="kpiHot">—</div><div class="l">已抓热点</div></div>
+        <div class="kpi"><div class="v" id="kpiCand">—</div><div class="l">候选池</div></div>
         <div class="kpi"><div class="v" id="kpiLib">—</div><div class="l">内容资产</div></div>
         <div class="kpi"><div class="v" id="kpiTrace">—</div><div class="l">LLM 调用</div></div>
       </div>
@@ -246,6 +275,14 @@
       </p>
       <button class="btn block ghost" style="margin-top:12px;" onclick="goTab(2)">开始跑 Agent 2 →</button>
     </div>
+    </div>
+    <div class="card">
+      <h2>🟡 待审核内容池 <span class="badge hot">新</span> <span class="muted">Agent 1 跑完自动推入</span></h2>
+      <p style="font-size:12.5px;color:#5a4a3a;line-height:1.7;">
+        每次 Agent 1 自动取 top 5 选题生成 <b>事件摘要 / 信息来源 / 内容角度 / 英文候选内容</b>，并集中存入此池。
+        你在这里 <b>采纳/驳回</b>，系统自动记录决策日志；下一次 LLM 规划会自动注入历史采纳率做 <b>反馈优化</b>。
+      </p>
+      <button class="btn block ghost" style="margin-top:12px;" onclick="goTab(4)">打开候选池 →</button>
     </div>
     <div class="card">
       <h2>🛠 真·Agent 架构（不是写死流水线）</h2>
@@ -400,6 +437,43 @@
       </div>
     </div>
   </section>
+
+  <!-- ========== Tab 4: 待审核内容池 ========== -->
+  <section class="panel" id="panel-cand">
+    <div class="card">
+      <h2>🟡 待审核内容池 <span class="muted">Agent 每日产出的候选选题，人工决策采纳/驳回</span></h2>
+      <div style="font-size:12.5px;color:#5a4a3a;line-height:1.7;">
+        Agent 1 跑完一轮会自动取 top 5 候选生成<strong>（事件摘要 / 信息来源 / 内容角度 / 英文候选内容）</strong>进入本池。
+        你在下面<strong>采纳</strong>或<strong>驳回</strong>，系统会自动记录决策日志、统计采纳率，并把采纳率信息<strong>反馈到下一次 LLM 规划</strong>里——这就是"反馈优化机制"。
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📊 池统计 & 反馈洞察</h2>
+      <div class="kpi-row" id="candKpi">
+        <div class="kpi"><div class="v" id="kpiCandTotal">—</div><div class="l">总候选</div></div>
+        <div class="kpi"><div class="v" id="kpiCandPending">—</div><div class="l">待审核</div></div>
+        <div class="kpi"><div class="v" id="kpiCandAdopted">—</div><div class="l">已采纳</div></div>
+        <div class="kpi"><div class="v" id="kpiCandRejected">—</div><div class="l">已驳回</div></div>
+      </div>
+      <div id="candKpiAccept" style="margin-top:6px;font-size:12.5px;color:#5a4a3a;"></div>
+      <div id="candFeedback" style="margin-top:10px;padding:12px;background:#fff9db;border:1px solid #f5d778;border-radius:10px;font-size:12.5px;line-height:1.7;color:#5a4a3a;display:none;"></div>
+    </div>
+
+    <div class="card">
+      <h2>📋 候选列表</h2>
+      <div class="row-tags" style="margin-bottom:12px;">
+        <button class="btn sm" onclick="candFilter('all',this)">全部</button>
+        <button class="btn sm ghost" onclick="candFilter('pending',this)">待审核</button>
+        <button class="btn sm ghost" onclick="candFilter('adopted',this)">已采纳</button>
+        <button class="btn sm ghost" onclick="candFilter('rejected',this)">已驳回</button>
+        <span style="flex:1"></span>
+        <button class="btn sm ghost" onclick="exportCandidates()">📥 导出 Markdown</button>
+        <button class="btn sm" style="background:var(--red);" onclick="clearCandPool()">🗑 清空待审</button>
+      </div>
+      <div id="candList"></div>
+    </div>
+  </section>
 </main>
 
 <!-- ========== 设置 Modal ========== -->
@@ -511,10 +585,10 @@ function toast(msg, ms = 2000) {
 function goTab(i) {
   $$('.panel').forEach(p => p.classList.remove('active'));
   $$('.tab').forEach(t => t.classList.remove('active'));
-  $('panel-' + ['home', 'a1', 'a2', 'lib'][i]).classList.add('active');
-  $$('.tab')[[0,1,2,3][i] >= 3 ? 3 : [0,1,2,3][i]]; // dummy
+  $('panel-' + ['home', 'a1', 'a2', 'lib', 'cand'][i]).classList.add('active');
   document.querySelector('.tab[data-tab="' + i + '"]').classList.add('active');
   if (i === 3) renderLib();
+  if (i === 4) renderCandidates();
   if (i === 0) renderHomeKPI();
   window.scrollTo(0, 0);
 }
@@ -675,6 +749,8 @@ function copyToClipboard(text, btn) {
 function renderHomeKPI() {
   $('kpiLib').textContent = Agents.loadLib().length;
   $('kpiTrace').textContent = LLM.getTrace().length;
+  const cands = Agents.loadCandidates();
+  $('kpiCand') && ($('kpiCand').textContent = cands.length);
   const cache = Fetchers.getCache();
   $('kpiHot').textContent = cache ? cache.items.length : '—';
 }
@@ -814,6 +890,16 @@ async function runA1() {
     // 提前加载 profile — 后面 LLM 自主规划/评分/选择/生成 都会用到
     const profile = Agents.loadProfile();
 
+    // 注入历史决策反馈上下文（如果有）
+    let _fbCtx = '';
+    try {
+      const _fb = Agents.getFeedbackSummary();
+      if (_fb && _fb.available) {
+        _fbCtx = '\n\n# 历史决策反馈（用于优化本次推荐策略）\n' + _fb.message;
+        appendLive('a1Live', '\n\n[🧠 反馈优化已激活：基于历史 ' + _fb.total + ' 条决策，采纳率 ' + _fb.acceptRate + '%]\n\n');
+      }
+    } catch (e) { /* ignore */ }
+
     // === AGENT STEP 1: LLM 自主规划 ===
     setStep('a1Flow', 'plan', 'active', '规划中…');
     appendLive('a1Live', '\n\n▼ [Agent Loop] LLM 自主规划：审视热点、制定评分策略...\n\n');
@@ -821,7 +907,7 @@ async function runA1() {
 
     const planResult = await LLM.call({
       system: '你是内容策略规划师。在评分前，先审视所有热点，制定策略：哪些平台的热点值得优先关注、哪些可以直接排除、评分时应侧重什么维度。返回严格 JSON。',
-      user: '## 账号画像\n' + JSON.stringify(profile) + '\n\n## 候选热点（共' + fetchResult.items.length + '条，展示前15条）\n' + JSON.stringify(fetchResult.items.slice(0, 15).map((it, i) => ({ idx: i, title: it.title, source: it.source, heat: it.heat, desc: (it.desc || '').slice(0, 50) }))) + '\n\n输出 JSON: { strategy, priority_sources, exclude_titles, weight_hint, expected_top, reasoning }',
+      user: '## 账号画像\n' + JSON.stringify(profile) + '\n\n## 候选热点（共' + fetchResult.items.length + '条，展示前15条）\n' + JSON.stringify(fetchResult.items.slice(0, 15).map((it, i) => ({ idx: i, title: it.title, source: it.source, heat: it.heat, desc: (it.desc || '').slice(0, 50) }))) + _fbCtx + '\n\n输出 JSON: { strategy, priority_sources, exclude_titles, weight_hint, expected_top, reasoning }',
       json: true, tag: 'agent1-plan',
       maxTokens: 5000,
       onChunk: (delta) => appendLive('a1Live', delta)
@@ -934,6 +1020,24 @@ async function runA1() {
       (selectionData.rejected_reason ? '<b>为什么没选第一名：</b>' + escapeHtml(selectionData.rejected_reason) : '') +
       '</div></div>'
     );
+
+    // === AGENT STEP 3.5: top 候选批量生成 (摘要/角度/英文) → 入"待审核内容池" ===
+    appendLive('a1Live', '\n\n▼ [Agent Loop] 为 top 5 候选生成（事件摘要/信息来源/内容角度/英文候选内容）...\n\n');
+    logLine('a1Log', '调用 LLM 为 top 5 候选批量生成候选内容并推入候选池…', 'info');
+    let pushedCount = 0;
+    let batchResult = null;
+    try {
+      const candOnProg = (m) => {
+        appendLive('a1Live', '\n[' + (m.stage || '') + '] ' + (m.message || '') + '\n');
+      };
+      batchResult = await Agents.generateCandidatesBatch(scored.slice(0, 5), profile, { topN: 5 }, candOnProg);
+      pushedCount = Agents.pushCandidatesToPool(scored.slice(0, 5), batchResult);
+      appendLive('a1Live', '\n\n[候选已生成，已推 ' + pushedCount + ' 条到待审核内容池]\n');
+      logLine('a1Log', '✓ 已推 ' + pushedCount + ' 条候选到「待审核内容池」（去 🟡 候选池 Tab 审核）', 'ok');
+    } catch (e) {
+      logLine('a1Log', '⚠️ 候选内容批量生成失败（已跳过候选池）：' + e.message, 'err');
+      appendLive('a1Live', '\n\n[候选池生成失败，已跳过]\n');
+    }
 
     // === AGENT STEP 4: LLM 生成脚本 ===
     setStep('a1Flow', 'gen', 'active', '生成中…');
@@ -1053,7 +1157,7 @@ async function runA1() {
         '<button class="btn sm" onclick="saveScriptToLib(' + JSON.stringify(JSON.stringify({title: titles[0], hook: script.hook_3s, script: script.script_30s, hashtags: script.hashtags, cta: script.cta, topic: top.title, source: top.source})).replace(/"/g, '&quot;') + ')">💾 存到内容资产库</button>' +
       '</div>';
 
-    lastA1 = { profile, plan, fetchSummary: { total: fetchResult.items.length, sources: fetchResult.sources, proxy: fetchResult.proxy }, scored, selection: selectionData, top, script, evalResult: evalData, retries: retryCount };
+    lastA1 = { profile, plan, fetchSummary: { total: fetchResult.items.length, sources: fetchResult.sources, proxy: fetchResult.proxy }, scored, selection: selectionData, top, script, evalResult: evalData, retries: retryCount, candidatesPushed: pushedCount };
     window._lastA1 = lastA1;
 
   } catch (err) {
@@ -1428,6 +1532,129 @@ function clearLib() {
   localStorage.removeItem('muxu_content_lib');
   renderLib();
   toast('已清空');
+}
+
+/* ========== 待审核内容池 ========== */
+let _candFilter = 'all';
+function candFilter(f, btn) {
+  _candFilter = f;
+  $$('.cand-card').forEach(c => c.remove()); // 简单重渲染
+  // 同步过滤按钮高亮
+  if (btn && btn.parentElement) {
+    btn.parentElement.querySelectorAll('button.btn').forEach(b => b.classList.replace('btn','btn'));
+  }
+  renderCandidates();
+}
+function renderCandidates() {
+  const arr = (typeof Agents !== 'undefined' ? Agents.loadCandidates() : []);
+  const fb = (typeof Agents !== 'undefined' ? Agents.getFeedbackSummary() : { available: false });
+
+  const total = arr.length;
+  const pending = arr.filter(c => c.status === 'pending').length;
+  const adopted = arr.filter(c => c.status === 'adopted').length;
+  const rejected = arr.filter(c => c.status === 'rejected').length;
+  const acceptRate = fb.available ? fb.acceptRate + '%' : '—';
+
+  $('kpiCandTotal').textContent = total;
+  $('kpiCandPending').textContent = pending;
+  $('kpiCandAdopted').textContent = adopted;
+  $('kpiCandRejected').textContent = rejected;
+  $('kpiCandAccept').innerHTML = '<b>采纳率：</b>' + acceptRate + (fb.available ? '（历史 ' + fb.total + ' 条决策）' : '（尚无采纳/驳回记录，下一轮会自动启用反馈）');
+
+  const fbBox = $('candFeedback');
+  if (fb.available) {
+    fbBox.style.display = 'block';
+    fbBox.innerHTML = '<div style="font-size:13px;font-weight:700;color:#7d6608;margin-bottom:6px;">🧠 反馈优化（已自动注入下一次 LLM 规划上下文）</div>' +
+      '<div style="white-space:pre-wrap;font-family:ui-monospace,Consolas,monospace;font-size:11.5px;line-height:1.7;color:#5a4a3a;">' + escapeHtml(fb.message) + '</div>';
+  } else {
+    fbBox.style.display = 'none';
+  }
+
+  let rows = arr;
+  if (_candFilter && _candFilter !== 'all') rows = arr.filter(c => c.status === _candFilter);
+
+  const list = $('candList');
+  if (rows.length === 0) {
+    list.innerHTML = '<div class="cand-empty">还没有候选内容。先去 🟧 热点→爆款 跑一次 Agent 1，跑完会自动批量推 5 条到本池。</div>';
+    return;
+  }
+  list.innerHTML = rows.map(renderCandidateCard).join('');
+}
+function renderCandidateCard(c) {
+  const sc = c.scores || {};
+  const sourceLabel = (c.source || '未知') + ' · 热度 ' + (c.heat || 0).toFixed(1) + 'w';
+  const reasons = (c.reason ? '<div class="reason">💬 ' + escapeHtml(c.reason) + '</div>' : '');
+  const statusBadge = '<span class="badge ' + c.status + '">' + (c.status === 'pending' ? '⏳ 待审核' : c.status === 'adopted' ? '✓ 已采纳' : '✗ 已驳回') + '</span>';
+  const totalBadge = sc.total != null ? '<span class="sc total">' + (sc.total || 0).toFixed(1) + ' 分</span>' : '';
+  const scoreChips = [
+    sc.relevance != null ? '<span class="sc">相关 ' + (sc.relevance || 0).toFixed(1) + '</span>' : '',
+    sc.creatable != null ? '<span class="sc">可拍 ' + (sc.creatable || 0).toFixed(1) + '</span>' : '',
+    sc.viral != null ? '<span class="sc">爆发 ' + (sc.viral || 0).toFixed(1) + '</span>' : '',
+    sc.risk != null ? '<span class="sc">安全 ' + (sc.risk || 0).toFixed(1) + '</span>' : '',
+    totalBadge
+  ].filter(Boolean).join('');
+
+  const decisionNoteHtml = c.decisionReason
+    ? '<div class="decision-note"><b>📝 决策记录：</b>' + escapeHtml(c.decisionReason) + (c.decisionAt ? '  <span style="color:#888;font-size:11px;">@ ' + new Date(c.decisionAt).toLocaleString('zh-CN') + '</span>' : '') + '</div>'
+    : '';
+
+  const historyHtml = (c.history && c.history.length)
+    ? '<div class="history">操作记录：' + c.history.map(h => '<span style="color:#666;">[' + new Date(h.at).toLocaleString('zh-CN') + '] ' + escapeHtml(h.action) + '</span>').join(' · ') + '</div>'
+    : '';
+
+  return '<div class="cand-card ' + c.status + '" id="cand-' + c.id + '">' +
+    '<div class="head">' +
+      '<div class="ttl">' + escapeHtml(c.title || '(无标题)') + '</div>' +
+      statusBadge +
+    '</div>' +
+    '<div class="src">📡 ' + escapeHtml(sourceLabel) + '  ·  创建于 ' + new Date(c.createdAt).toLocaleString('zh-CN') + '</div>' +
+    '<div class="field summary"><div class="lab">事件摘要</div><div class="val">' + escapeHtml(c.summary || '(尚未生成)') + '</div></div>' +
+    '<div class="field angle"><div class="lab">内容角度</div><div class="val">' + escapeHtml(c.angle || '(尚未生成)') + '</div></div>' +
+    '<div class="field en"><div class="lab">英文候选</div><div class="val">' + escapeHtml(c.en_pitch || '(尚未生成)') + '</div></div>' +
+    '<div class="scores-row">' + scoreChips + '</div>' +
+    reasons +
+    decisionNoteHtml +
+    historyHtml +
+    '<div class="decision-actions">' +
+      '<input type="text" placeholder="决策原因（可选：为什么采纳/驳回）" id="note-' + c.id + '" value="' + escapeHtml(c.decisionReason || '') + '">' +
+      '<button class="btn sm" style="background:var(--accent-2);" onclick="decideCand(\'' + c.id + '\',\'adopted\')">✓ 采纳</button>' +
+      '<button class="btn sm" style="background:#aaa;" onclick="decideCand(\'' + c.id + '\',\'rejected\')">✗ 驳回</button>' +
+      '<button class="btn sm ghost" onclick="resetCand(\'' + c.id + '\')">↺ 重置</button>' +
+      '<button class="btn sm" style="background:var(--red);" onclick="delCand(\'' + c.id + '\')">删</button>' +
+    '</div>' +
+    '</div>';
+}
+function decideCand(id, status) {
+  const note = ($('note-' + id)?.value || '').trim();
+  Agents.decideCandidate(id, status, note);
+  renderCandidates();
+  renderHomeKPI();
+  toast(status === 'adopted' ? '✓ 已采纳' : '✗ 已驳回');
+}
+function resetCand(id) {
+  Agents.decideCandidate(id, 'pending', '');
+  Agents.updateCandidate(id, { decisionAt: undefined, decisionReason: '' });
+  renderCandidates();
+  renderHomeKPI();
+  toast('已重置为待审核');
+}
+function delCand(id) {
+  if (!confirm('删除这条候选？')) return;
+  Agents.deleteCandidate(id);
+  renderCandidates();
+  renderHomeKPI();
+  toast('已删除');
+}
+function clearCandPool() {
+  if (!confirm('清空所有待审核内容？\n\n⚠️ 已采纳/已驳回的记录会保留，只有「待审核」会被清空。')) return;
+  const n = Agents.clearCandidates('pending');
+  renderCandidates();
+  renderHomeKPI();
+  toast('已清空 ' + n + ' 条待审');
+}
+function exportCandidates() {
+  const md = Agents.exportCandidatesAsMarkdown(_candFilter === 'all' ? null : _candFilter);
+  downloadFile('muxu_candidate_pool_' + _candFilter + '_' + Date.now() + '.md', md);
 }
 
 /* ========== 初始化 ========== */

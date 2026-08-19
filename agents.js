@@ -18,6 +18,8 @@
 
   const LIB_KEY = 'muxu_content_lib';
   const TRACK_KEY = 'muxu_track';
+  const CAND_KEY = 'muxu_candidate_pool';
+  const CAND_MAX = 500;
 
   // ============== 账号画像（默认苜蓿的美食探店） ==============
   const DEFAULT_PROFILE = {
@@ -132,7 +134,14 @@ ${topic._reason ? '（LLM 评分理由：' + topic._reason + '）' : ''}
   // ============== Agent 1: Agent Loop（规划→执行→自检→重试） ==============
 
   // 第 0 步：LLM 自主规划评分策略
-  async function planStrategy(items, profile, onProgress) {
+  async function planStrategy(items, profile, onProgress, opts) {
+    // opts.feedbackContext 可选；若不传则自动取历史决策统计
+    let feedbackCtx = (opts && opts.feedbackContext) || '';
+    if (!feedbackCtx) {
+      const fb = getFeedbackSummary();
+      if (fb.available) feedbackCtx = '\n\n# 历史决策反馈（用于优化推荐策略）\n' + fb.message;
+    }
+
     const sys = `你是内容策略规划师。在评分前，先审视所有热点，制定策略：
 哪些平台的热点值得优先关注、哪些可以直接排除、评分时应侧重什么维度。
 这不是走过场——你要真正思考，给出有判断力的策略。返回严格 JSON。`;
@@ -146,7 +155,7 @@ ${topic._reason ? '（LLM 评分理由：' + topic._reason + '）' : ''}
 ${JSON.stringify(profile, null, 2)}
 
 ## 候选热点（共 ${items.length} 条，展示前 ${preview.length} 条）
-${JSON.stringify(preview, null, 2)}
+${JSON.stringify(preview, null, 2)}${feedbackCtx}
 
 ## 输出 JSON
 {
@@ -267,6 +276,84 @@ ${JSON.stringify(profile)}
     return r.json;
   }
 
+  // 第 3.5 步：为 topN 选题批量生成 (事件摘要 / 信息来源 / 内容角度 / 英文候选内容) 加入"待审核内容池"
+  async function generateCandidatesBatch(scored, profile, opts, onProgress) {
+    const top = scored.slice(0, (opts && opts.topN) || 5);
+    if (top.length === 0) return { candidates: [], raw: null };
+
+    const sys = `你是内容策略师。给定一组候选热点，为每一条生成三项内容，进入"待审核内容池"由人审核：
+1) **summary**     事件摘要：一句话讲清是什么事情、为什么值得跟（≤ 70 字）
+2) **angle**       内容角度：建议从什么角度切入拍（食材/场景/情感/对比/争议/科普，≤ 50 字，给创作者看的"我该怎么拍"提示）
+3) **en_pitch**    英文候选内容：可在 X/Twitter 发布的英文 hook + pitch（≤ 220 字符，开头要有 question / number / contrast）
+
+必须"可立即审核"：摘要事实清晰、角度可执行、英文有钩子。返回严格 JSON。`;
+
+    const usr = `## 账号
+${JSON.stringify(profile)}
+
+## 待生成候选内容（${top.length} 条，按 LLM 评分排序）
+${JSON.stringify(top.map((t, i) => ({
+  idx: i,
+  title: t.title,
+  source: t.source,
+  heat: t.heat,
+  desc: (t.desc || '').slice(0, 100),
+  scores: {
+    relevance: t._score?.relevance,
+    creatable: t._score?.creatable,
+    viral: t._score?.viral,
+    risk: t._score?.risk,
+    total: t._score?.total
+  },
+  reason: t._reason
+})), null, 2)}
+
+## 输出严格 JSON
+{
+  "candidates": [
+    {
+      "idx": 0,
+      "summary": "事件摘要 ≤ 70 字",
+      "angle": "内容角度建议 ≤ 50 字",
+      "en_pitch": "English X candidate ≤ 220 chars"
+    },
+    ... (idx 必须对齐输入顺序)
+  ]
+}`;
+
+    onProgress && onProgress({ stage: 'candidates', message: '为 top ' + top.length + ' 条候选生成 (摘要 / 角度 / 英文候选内容)…' });
+    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent1-candidates', maxTokens: 5000 });
+    onProgress && onProgress({ stage: 'candidates-done', message: '候选内容生成完成（' + (r.json.candidates || []).length + ' 条），耗时 ' + r.elapsed + 'ms', usage: r.usage, elapsed: r.elapsed });
+    return r.json;
+  }
+
+  // 调试字符串：把 batch 生成结果落库成候选池条目
+  function pushCandidatesToPool(top, batchRaw) {
+    const list = (batchRaw && batchRaw.candidates) || [];
+    if (list.length === 0) return 0;
+    const entries = [];
+    for (let i = 0; i < list.length && i < top.length; i++) {
+      const t = top[i];
+      const c = list[i];
+      const s = (t && t._score) || {};
+      entries.push({
+        topicIdx: i,
+        title: t?.title || '',
+        source: t?.source || '',
+        heat: t?.heat || 0,
+        desc: t?.desc || '',
+        scores: {
+          relevance: s.relevance, creatable: s.creatable, viral: s.viral, risk: s.risk, total: s.total
+        },
+        reason: s.reason || t?._reason || '',
+        summary: c.summary || '',
+        angle: c.angle || '',
+        en_pitch: c.en_pitch || ''
+      });
+    }
+    return bulkAddCandidates(entries);
+  }
+
   // Agent 1 完整 loop：规划 → 抓取 → 评分 → 自主选择 → 生成 → 自检 → (重试)
   async function runAgent1(opts) {
     const profile = opts.profile || loadProfile();
@@ -293,6 +380,25 @@ ${JSON.stringify(profile)}
     // AGENT STEP 3: LLM 自主选择（不再硬取 top5[0]）
     const selection = await selectBest(scored, profile, opts.onProgress);
     const winner = selection.topic;
+
+    // AGENT STEP 3.5: 为 topN 候选生成 (摘要 / 角度 / 英文候选) → 入"待审核内容池"
+    let batchResult = null;
+    let pushedCount = 0;
+    if (!(opts && opts.skipCandidates)) {
+      try {
+        batchResult = await generateCandidatesBatch(scored, profile, { topN: 5 }, opts.onProgress);
+        pushedCount = pushCandidatesToPool(scored.slice(0, 5), batchResult);
+        opts.onProgress && opts.onProgress({
+          stage: 'pushed',
+          message: '已把 ' + pushedCount + ' 条候选推入"待审核内容池"（🟡 候选池 Tab 可审核）'
+        });
+      } catch (e) {
+        opts.onProgress && opts.onProgress({
+          stage: 'candidates-failed',
+          message: '⚠️ 候选内容批量生成失败（已跳过候选池）：' + e.message
+        });
+      }
+    }
 
     // AGENT STEP 4: LLM 生成脚本
     let script = await generateScript(winner, profile, opts.onProgress);
@@ -328,7 +434,11 @@ ${JSON.stringify(profile)}
       winner,
       script,
       evalResult,
-      retries
+      retries,
+      candidates: {
+        batch: batchResult,
+        pushed: pushedCount
+      }
     };
   }
 
@@ -689,6 +799,158 @@ differentiation_ok=${evalResult.differentiation_ok}
     saveLib(loadLib().filter(x => x.id !== id));
   }
 
+  // ============== 待审核内容池 ==============
+  // 状态机：pending → adopted / rejected（人工决策）
+  function loadCandidates() {
+    try { return JSON.parse(localStorage.getItem(CAND_KEY) || '[]'); }
+    catch (e) { return []; }
+  }
+  function saveCandidates(arr) {
+    localStorage.setItem(CAND_KEY, JSON.stringify(arr.slice(0, CAND_MAX)));
+  }
+  function addCandidate(entry) {
+    const arr = loadCandidates();
+    entry.id = entry.id || ('cand_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
+    entry.createdAt = entry.createdAt || new Date().toISOString();
+    entry.status = entry.status || 'pending';
+    entry.history = entry.history || [];
+    arr.unshift(entry);
+    saveCandidates(arr);
+    return entry;
+  }
+  function bulkAddCandidates(entries) {
+    const arr = loadCandidates();
+    let i = 0;
+    for (const e of entries) {
+      e.id = e.id || ('cand_' + (Date.now() - (i++)).toString(36) + Math.random().toString(36).slice(2, 6));
+      e.createdAt = e.createdAt || new Date().toISOString();
+      e.status = 'pending';
+      e.history = [];
+      arr.unshift(e);
+    }
+    saveCandidates(arr);
+    return entries.length;
+  }
+  function decideCandidate(id, status, reason) {
+    const arr = loadCandidates();
+    const idx = arr.findIndex(x => x.id === id);
+    if (idx < 0) return null;
+    const c = arr[idx];
+    const prev = c.status || 'pending';
+    c.status = status;             // 'adopted' | 'rejected'
+    c.decisionAt = new Date().toISOString();
+    c.decisionReason = (reason || '').trim();
+    (c.history = c.history || []).push({
+      at: c.decisionAt,
+      action: prev + ' → ' + status,
+      reason: c.decisionReason
+    });
+    saveCandidates(arr);
+    return c;
+  }
+  function updateCandidate(id, patch) {
+    const arr = loadCandidates();
+    const idx = arr.findIndex(x => x.id === id);
+    if (idx < 0) return null;
+    arr[idx] = { ...arr[idx], ...patch, updatedAt: new Date().toISOString() };
+    saveCandidates(arr);
+    return arr[idx];
+  }
+  function deleteCandidate(id) {
+    saveCandidates(loadCandidates().filter(x => x.id !== id));
+  }
+  function clearCandidates(scope) {
+    const all = loadCandidates();
+    if (scope === 'all') {
+      saveCandidates([]);
+      return all.length;
+    }
+    // 默认只清 pending，保留决策记录（决策是有价值的数据）
+    const kept = all.filter(c => c.status !== 'pending');
+    saveCandidates(kept);
+    return all.length - kept.length;
+  }
+
+  // ============== 反馈优化机制 ==============
+  // 聚合所有历史决策，生成"反馈优化上下文"，供下一次 planStrategy / scoreTopics 使用
+  function getFeedbackSummary() {
+    const arr = loadCandidates();
+    const decided = arr.filter(c => c.status === 'adopted' || c.status === 'rejected');
+    if (decided.length === 0) {
+      return { total: 0, adopted: 0, rejected: 0, acceptRate: 0, available: false, message: '暂无历史决策。' };
+    }
+    const adopted = decided.filter(c => c.status === 'adopted');
+    const rejected = decided.filter(c => c.status === 'rejected');
+    const acceptRate = Math.round(adopted.length / decided.length * 100);
+
+    // 1) 各源的采纳率
+    const bySource = {};
+    for (const c of decided) {
+      const src = c.source || '未知';
+      if (!bySource[src]) bySource[src] = { adopted: 0, rejected: 0, total: 0 };
+      const k = c.status === 'adopted' ? 'adopted' : 'rejected';
+      bySource[src][k]++;
+      bySource[src].total++;
+    }
+    const sourcesSorted = Object.entries(bySource)
+      .sort((a, b) => b[1].total - a[1].total)
+      .map(([k, v]) => k + ' ' + Math.round(v.adopted / v.total * 100) + '%(' + v.adopted + '/' + v.total + ')');
+
+    // 2) 高相关但被驳回 → 评分标准与实际偏好有偏差
+    const highRelReject = rejected.filter(c => (c.scores?.relevance || 0) >= 7);
+    // 3) 低相关但被采纳 → 账号偶尔试新方向
+    const lowRelAdopt = adopted.filter(c => (c.scores?.relevance || 0) < 5);
+
+    // 4) 已被采纳的内容关键词（高频）
+    const adoptTitles = adopted.map(c => c.title || '').join(' ');
+    const rejectReasons = rejected.map(c => c.decisionReason || '').filter(Boolean);
+
+    const lines = [];
+    lines.push('共 ' + decided.length + ' 条决策（采纳 ' + adopted.length + ' / 驳回 ' + rejected.length + '，采纳率 ' + acceptRate + '%）');
+    lines.push('各源采纳率：' + sourcesSorted.join('; '));
+    if (highRelReject.length) lines.push('⚠️ 高相关被驳回 ' + highRelReject.length + ' 条（评分可能过拟合）: ' + highRelReject.slice(0, 3).map(c => (c.title || '').slice(0, 20)).join(' / '));
+    if (lowRelAdopt.length) lines.push('💡 低相关被采纳 ' + lowRelAdopt.length + ' 条（账号在试新方向）: ' + lowRelAdopt.slice(0, 3).map(c => (c.title || '').slice(0, 20)).join(' / '));
+    if (rejectReasons.length) lines.push('驳回原因示例：' + rejectReasons.slice(0, 5).map(r => r.slice(0, 30)).join(' / '));
+    lines.push('请基于以上模式调整推荐：评分/规划时优先采纳采纳率高的源与方向，规避反复踩过的坑。');
+
+    return {
+      total: decided.length,
+      adopted: adopted.length,
+      rejected: rejected.length,
+      acceptRate,
+      bySource,
+      sourcesSorted,
+      highRelReject: highRelReject.length,
+      lowRelAdopt: lowRelAdopt.length,
+      available: true,
+      message: lines.join('\n')
+    };
+  }
+
+  // 待审核池导出 Markdown
+  function exportCandidatesAsMarkdown(filter) {
+    const arr = loadCandidates();
+    let rows = arr;
+    if (filter && filter !== 'all') rows = arr.filter(c => c.status === filter);
+    let md = '# 待审核内容池\n\n';
+    md += '导出时间：' + new Date().toLocaleString('zh-CN') + '\n\n';
+    md += '共 ' + arr.length + ' 条（' + filter + '）\n\n---\n\n';
+    for (const c of rows) {
+      md += '## ' + (c.title || '未命名') + '\n\n';
+      md += '- ID: `' + c.id + '`\n';
+      md += '- 状态：' + c.status + (c.decisionAt ? '（' + new Date(c.decisionAt).toLocaleString('zh-CN') + '）' : '') + '\n';
+      md += '- 来源：' + (c.source || '') + ' · 热度：' + (c.heat || 0).toFixed(1) + '\n';
+      if (c.scores) md += '- 评分：相关 ' + (c.scores.relevance || 0).toFixed(1) + ' / 可拍 ' + (c.scores.creatable || 0).toFixed(1) + ' / 爆发 ' + (c.scores.viral || 0).toFixed(1) + ' / 安全 ' + (c.scores.risk || 0).toFixed(1) + ' / 总分 ' + (c.scores.total || 0).toFixed(1) + '\n';
+      md += '\n';
+      if (c.summary) md += '### 事件摘要\n' + c.summary + '\n\n';
+      if (c.angle) md += '### 内容角度\n' + c.angle + '\n\n';
+      if (c.en_pitch) md += '### English Pitch\n> ' + c.en_pitch + '\n\n';
+      if (c.decisionReason) md += '### 决策记录\n' + c.decisionReason + '\n\n';
+      md += '---\n\n';
+    }
+    return md;
+  }
+
   // 追踪表
   function loadTrack() {
     try { return JSON.parse(localStorage.getItem(TRACK_KEY) || '[]'); }
@@ -738,12 +1000,17 @@ differentiation_ok=${evalResult.differentiation_ok}
     // Agent 1 工具
     runAgent1, scoreTopics, generateScript,
     planStrategy, selectBest, selfEvaluate, generateScriptWithFeedback,
+    generateCandidatesBatch, pushCandidatesToPool,
     // Agent 2 工具
     runAgent2, analyzeViral, generateRemix, quickSimilarity,
     planAnalysis, evaluateRemixes, generateRemixWithFeedback,
     // 资产库
     loadLib, addToLib, removeFromLib,
     loadTrack, addToTrack, updateTrack,
-    exportLibAsMarkdown
+    exportLibAsMarkdown,
+    // 待审核内容池 + 反馈优化
+    loadCandidates, addCandidate, bulkAddCandidates,
+    decideCandidate, updateCandidate, deleteCandidate, clearCandidates,
+    getFeedbackSummary, exportCandidatesAsMarkdown
   };
 })(window);
