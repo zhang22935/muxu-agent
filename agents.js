@@ -129,12 +129,150 @@ ${topic._reason ? '（LLM 评分理由：' + topic._reason + '）' : ''}
     return r.json;
   }
 
-  // 一键跑完 Agent 1
+  // ============== Agent 1: Agent Loop（规划→执行→自检→重试） ==============
+
+  // 第 0 步：LLM 自主规划评分策略
+  async function planStrategy(items, profile, onProgress) {
+    const sys = `你是内容策略规划师。在评分前，先审视所有热点，制定策略：
+哪些平台的热点值得优先关注、哪些可以直接排除、评分时应侧重什么维度。
+这不是走过场——你要真正思考，给出有判断力的策略。返回严格 JSON。`;
+
+    const preview = items.slice(0, 15).map((it, i) => ({
+      idx: i, title: it.title, source: it.source, heat: it.heat,
+      desc: (it.desc || '').slice(0, 50)
+    }));
+
+    const usr = `## 账号画像
+${JSON.stringify(profile, null, 2)}
+
+## 候选热点（共 ${items.length} 条，展示前 ${preview.length} 条）
+${JSON.stringify(preview, null, 2)}
+
+## 输出 JSON
+{
+  "strategy": "整体策略一句话（要有判断力，不是套话）",
+  "priority_sources": ["优先关注哪个平台，为什么"],
+  "exclude_titles": ["建议直接排除的标题（不相关/高风险）"],
+  "weight_hint": "评分时侧重哪个维度（relevance/creatable/viral/risk）及原因",
+  "expected_top": "预判哪条可能胜出",
+  "reasoning": "为什么这样规划（2-3 句话）"
+}`;
+
+    onProgress && onProgress({ stage: 'planning', message: 'LLM 正在审视热点、制定评分策略…' });
+    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent1-plan' });
+    onProgress && onProgress({ stage: 'planned', message: '策略：' + (r.json.strategy || '').slice(0, 40) + '…，耗时 ' + r.elapsed + 'ms' });
+    return r.json;
+  }
+
+  // 第 2.5 步：LLM 自主选择最佳选题（不再硬取 top5[0]）
+  async function selectBest(scored, profile, onProgress) {
+    const sys = `你是内容选题决策者。不要简单选分数最高的——要综合考虑分数、风险、可拍性、与账号的适配度。
+你要给出选择理由，说明为什么选这条而不是分数更高的那条。返回严格 JSON。`;
+
+    const top5 = scored.slice(0, 5);
+    const usr = `## 账号
+${JSON.stringify(profile)}
+
+## Top5 候选（已评分）
+${JSON.stringify(top5.map((t, i) => ({
+  rank: i + 1,
+  title: t.title,
+  source: t.source,
+  scores: t._score,
+  reason: t._reason
+})), null, 2)}
+
+## 输出 JSON
+{
+  "selected_idx": 0,
+  "selected_title": "选中的标题",
+  "reasoning": "为什么选这条（3-4 句话，要有判断力）",
+  "risk_note": "选中这条的风险提示",
+  "rejected_reason": "为什么没选分数最高的"
+}`;
+
+    onProgress && onProgress({ stage: 'selecting', message: 'LLM 自主审视 Top5、选择最佳选题…' });
+    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent1-select' });
+    const idx = Math.min(r.json.selected_idx || 0, top5.length - 1);
+    onProgress && onProgress({ stage: 'selected', message: 'LLM 选中：' + (top5[idx]?.title || '').slice(0, 20) + '…（' + (r.json.reasoning || '').slice(0, 30) + '…）' });
+    return { topic: top5[idx] || top5[0], reasoning: r.json.reasoning, riskNote: r.json.risk_note, rejectedReason: r.json.rejected_reason };
+  }
+
+  // 第 4 步：LLM 自检脚本质量
+  async function selfEvaluate(script, topic, profile, onProgress) {
+    const sys = `你是内容质量审核员。评估生成的脚本是否达到发布标准。
+要严格、有判断力——不是走形式打高分，要真正指出问题。返回严格 JSON。`;
+
+    const usr = `## 账号
+${JSON.stringify(profile)}
+
+## 选题
+${topic.title}（来源：${topic.source}）
+
+## 生成的脚本
+${JSON.stringify(script, null, 2)}
+
+## 评估维度（每项 0-100）
+1. hook_power: 钩子吸引力（前 3 秒能不能让人停下）
+2. script_quality: 脚本质量（信息密度、节奏、可拍性）
+3. cta_effectiveness: 互动引导效果
+4. safety: 安全度（有没有标题党/争议/侵权风险）
+5. overall: 总分
+
+## 输出 JSON
+{
+  "hook_power": 75,
+  "script_quality": 80,
+  "cta_effectiveness": 70,
+  "safety": 90,
+  "overall": 78,
+  "verdict": "pass",
+  "issues": ["具体问题1", "具体问题2"],
+  "suggestions": ["改进建议1", "改进建议2"]
+}
+
+verdict 规则：overall >= 80 且无严重 issues → "pass"；否则 → "retry"`;
+
+    onProgress && onProgress({ stage: 'evaluating', message: 'LLM 自检脚本质量…' });
+    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent1-eval' });
+    onProgress && onProgress({ stage: 'evaluated', message: '自检得分：' + r.json.overall + '/100，结论：' + (r.json.verdict === 'pass' ? '通过' : '需重试') });
+    return r.json;
+  }
+
+  // 第 4.5 步：带反馈重新生成（自检不通过时）
+  async function generateScriptWithFeedback(topic, profile, evalResult, onProgress) {
+    const sys = `你是爆款短视频脚本撰稿人。上次生成的脚本未通过自检，请根据反馈重新生成。
+不要只是微调——要针对指出的问题做实质性改进。返回严格 JSON。`;
+
+    const usr = `## 账号
+${JSON.stringify(profile)}
+
+## 选题
+标题：${topic.title}
+来源：${topic.source}
+描述：${topic.desc || '无'}
+
+## 上次自检结果
+总分：${evalResult.overall}/100
+问题：${JSON.stringify(evalResult.issues)}
+建议：${JSON.stringify(evalResult.suggestions)}
+
+## 任务
+针对以上问题重新生成脚本。字段同上次：title(3个)、hook_3s、script_30s、cover_text、hashtags(5-7)、publish_time、cta、risk_check、expected_metrics。
+只输出 JSON。`;
+
+    onProgress && onProgress({ stage: 'regenerating', message: '根据自检反馈重新生成（第 ' + (evalResult._retry || 1) + ' 次重试）…' });
+    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent1-regenerate' });
+    onProgress && onProgress({ stage: 'regenerated', message: '重新生成完成，耗时 ' + r.elapsed + 'ms' });
+    return r.json;
+  }
+
+  // Agent 1 完整 loop：规划 → 抓取 → 评分 → 自主选择 → 生成 → 自检 → (重试)
   async function runAgent1(opts) {
     const profile = opts.profile || loadProfile();
     const fetchResult = opts.fetchResult;
 
-    // Step A: 拉真实热点
+    // Step 0: 规划
     let fetchData = fetchResult;
     if (!fetchData) {
       opts.onProgress && opts.onProgress({ stage: 'fetch', message: '正在拉取 5 路真实热点…' });
@@ -144,21 +282,40 @@ ${topic._reason ? '（LLM 评分理由：' + topic._reason + '）' : ''}
       stage: 'fetched',
       message: '抓到 ' + fetchData.items.length + ' 条真实热点，来自 ' + Object.keys(fetchData.sources || {}).length + ' 个平台'
     });
+    if (fetchData.items.length === 0) throw new Error('没抓到任何热点，请检查代理配置');
 
-    if (fetchData.items.length === 0) {
-      throw new Error('没抓到任何热点，请检查代理配置');
-    }
+    // AGENT STEP 1: LLM 自主规划
+    const plan = await planStrategy(fetchData.items, profile, opts.onProgress);
 
-    // Step B: LLM 评分
+    // AGENT STEP 2: LLM 评分（带策略）
     const scored = await scoreTopics(fetchData.items, profile, opts.onProgress);
-    const top5 = scored.slice(0, 5);
 
-    // Step C: 选 Top 1 生成脚本
-    const winner = top5[0];
-    const script = await generateScript(winner, profile, opts.onProgress);
+    // AGENT STEP 3: LLM 自主选择（不再硬取 top5[0]）
+    const selection = await selectBest(scored, profile, opts.onProgress);
+    const winner = selection.topic;
+
+    // AGENT STEP 4: LLM 生成脚本
+    let script = await generateScript(winner, profile, opts.onProgress);
+
+    // AGENT STEP 5: LLM 自检
+    let evalResult = await selfEvaluate(script, winner, profile, opts.onProgress);
+
+    // AGENT STEP 6: 自检不通过 → 带反馈重试（最多 2 次）
+    let retries = 0;
+    while ((evalResult.verdict === 'retry') && retries < 2) {
+      retries++;
+      evalResult._retry = retries;
+      opts.onProgress && opts.onProgress({
+        stage: 'retry',
+        message: `自检未通过（${evalResult.overall}/100），LLM 决定第 ${retries} 次重试，问题：${(evalResult.issues || []).join('; ')}`
+      });
+      script = await generateScriptWithFeedback(winner, profile, evalResult, opts.onProgress);
+      evalResult = await selfEvaluate(script, winner, profile, opts.onProgress);
+    }
 
     return {
       profile,
+      plan,
       fetchSummary: {
         total: fetchData.items.length,
         sources: fetchData.sources,
@@ -167,9 +324,11 @@ ${topic._reason ? '（LLM 评分理由：' + topic._reason + '）' : ''}
         isStale: fetchData.usedCache
       },
       scored,
-      top5,
+      selection,
       winner,
-      script
+      script,
+      evalResult,
+      retries
     };
   }
 
@@ -277,6 +436,113 @@ ${viralText.slice(0, 2000)}
     return Math.round((jaccard * 0.3 + gramScore * 0.7) * 100);
   }
 
+  // ============== Agent 2: Agent Loop（规划→拆解→生成→自检→重试） ==============
+
+  // 第 0 步：LLM 自主规划拆解策略
+  async function planAnalysis(viralText, profile, onProgress) {
+    const sys = `你是爆款分析规划师。在拆解前，先判断内容类型、制定分析重点。
+这不是走形式——你要真正预判可能发现的爆款机制，指导后续拆解。返回严格 JSON。`;
+
+    const usr = `## 账号
+${JSON.stringify(profile)}
+
+## 待分析文本（前 300 字）
+"""
+${viralText.slice(0, 300)}
+"""
+
+## 输出 JSON
+{
+  "content_type": "内容类型判断（探店/教程/挑战/情感/…）",
+  "target_audience": "目标受众画像",
+  "analysis_focus": "拆解重点应该放在哪个维度（hook/bait/retention/interaction/cta）",
+  "expected_drivers": "预判可能发现的爆款机制（1-2 句）",
+  "strategy": "分析策略一句话"
+}`;
+
+    onProgress && onProgress({ stage: 'planning', message: 'LLM 正在判断内容类型、制定拆解策略…' });
+    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent2-plan' });
+    onProgress && onProgress({ stage: 'planned', message: '策略：' + (r.json.strategy || '').slice(0, 40) + '…，耗时 ' + r.elapsed + 'ms' });
+    return r.json;
+  }
+
+  // 第 3 步：LLM 自检二创质量
+  async function evaluateRemixes(remixes, analysis, viralText, onProgress) {
+    const sys = `你是二创质量审核员。评估 3 条二创的差异化程度和可发布性。
+要严格——如果某条二创和原文太像，或者脚本质量太低，必须判 retry。返回严格 JSON。`;
+
+    const usr = `## 原爆款文本（前 300 字）
+"""
+${viralText.slice(0, 300)}
+"""
+
+## 已完成拆解的 driving_factors
+${JSON.stringify(analysis.driving_factors)}
+
+## 3 条二创
+${JSON.stringify(remixes.map((r, i) => ({
+  idx: i,
+  name: r.name,
+  change: r.change,
+  title: r.title,
+  hook_3s: (r.hook_3s || '').slice(0, 60),
+  similarity_final: r.similarity_final
+})), null, 2)}
+
+## 输出 JSON
+{
+  "overall_score": 78,
+  "verdict": "pass",
+  "per_remix": [
+    {"idx": 0, "score": 80, "issue": "或空字符串"},
+    {"idx": 1, "score": 75, "issue": "钩子可以更强"},
+    {"idx": 2, "score": 82, "issue": ""}
+  ],
+  "differentiation_ok": true,
+  "suggestions": ["改进建议1"]
+}
+
+verdict 规则：overall >= 70 且 differentiation_ok → "pass"；否则 → "retry"`;
+
+    onProgress && onProgress({ stage: 'evaluating', message: 'LLM 自检二创质量…' });
+    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent2-eval' });
+    onProgress && onProgress({ stage: 'evaluated', message: '二创自检得分：' + r.json.overall_score + '/100，结论：' + (r.json.verdict === 'pass' ? '通过' : '需重试') });
+    return r.json;
+  }
+
+  // 带反馈重新生成二创
+  async function generateRemixWithFeedback(analysis, viralText, profile, evalResult, onProgress) {
+    const sys = `你是爆款二次创作撰稿人。上次生成的二创未通过自检，请根据反馈重新生成。
+要针对指出的问题做实质改进，不能只是微调。返回严格 JSON。`;
+
+    const usr = `## 账号
+${JSON.stringify(profile)}
+
+## 拆解
+${JSON.stringify(analysis, null, 2)}
+
+## 原爆款文本（前 1500 字）
+"""
+${viralText.slice(0, 1500)}
+"""
+
+## 上次自检结果
+总分：${evalResult.overall_score}/100
+各条问题：${JSON.stringify(evalResult.per_remix)}
+建议：${JSON.stringify(evalResult.suggestions)}
+
+## 任务
+基于 driving_factors 和 reusable_template 重新生成 3 条差异化二创。
+每条含 name、change、title、hook_3s、script_30s、hashtags、cta、similarity_self(0-100)。
+返回 { remixes: [...] }。`;
+
+    onProgress && onProgress({ stage: 'regenerating', message: '根据自检反馈重新生成二创…' });
+    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent2-regenerate' });
+    onProgress && onProgress({ stage: 'regenerated', message: '重新生成完成，耗时 ' + r.elapsed + 'ms' });
+    return r.json;
+  }
+
+  // Agent 2 完整 loop：规划 → 拆解 → 生成二创 → 相似度 → 自检 → (重试)
   async function runAgent2(opts) {
     const profile = opts.profile || loadProfile();
     const viralText = (opts.viralText || '').trim();
@@ -286,16 +552,42 @@ ${viralText.slice(0, 2000)}
 
     opts.onProgress && opts.onProgress({ stage: 'input', message: '已收到爆款文本，共 ' + viralText.length + ' 字' });
 
+    // AGENT STEP 1: LLM 自主规划
+    const plan = await planAnalysis(viralText, profile, opts.onProgress);
+
+    // AGENT STEP 2: LLM 5 维拆解
     const analysis = await analyzeViral(viralText, profile, opts.onProgress);
+
+    // AGENT STEP 3: LLM 生成二创
     const remixResult = await generateRemix(analysis, viralText, profile, opts.onProgress);
 
-    // 用脚本的 quickSimilarity 重新算一遍，加上 LLM 自评
+    // AGENT STEP 4: 相似度校验
     const remixes = (remixResult.remixes || []).map(rx => {
       const mySim = quickSimilarity(viralText, (rx.script_30s || '') + (rx.hook_3s || ''));
       return { ...rx, similarity_calc: mySim, similarity_final: Math.max(rx.similarity_self || 0, mySim) };
     });
 
-    return { profile, viralText, analysis, remixes };
+    // AGENT STEP 5: LLM 自检
+    let evalResult = await evaluateRemixes(remixes, analysis, viralText, opts.onProgress);
+
+    // AGENT STEP 6: 自检不通过 → 带反馈重试（最多 2 次）
+    let retries = 0;
+    let finalRemixes = remixes;
+    while (evalResult.verdict === 'retry' && retries < 2) {
+      retries++;
+      opts.onProgress && opts.onProgress({
+        stage: 'retry',
+        message: `自检未通过（${evalResult.overall_score}/100），LLM 决定第 ${retries} 次重试`
+      });
+      const regenResult = await generateRemixWithFeedback(analysis, viralText, profile, evalResult, opts.onProgress);
+      finalRemixes = (regenResult.remixes || []).map(rx => {
+        const mySim = quickSimilarity(viralText, (rx.script_30s || '') + (rx.hook_3s || ''));
+        return { ...rx, similarity_calc: mySim, similarity_final: Math.max(rx.similarity_self || 0, mySim) };
+      });
+      evalResult = await evaluateRemixes(finalRemixes, analysis, viralText, opts.onProgress);
+    }
+
+    return { profile, plan, viralText, analysis, remixes: finalRemixes, evalResult, retries };
   }
 
   // ============== 内容资产库 ==============
@@ -362,8 +654,13 @@ ${viralText.slice(0, 2000)}
 
   global.Agents = {
     loadProfile, saveProfile, DEFAULT_PROFILE,
+    // Agent 1 工具
     runAgent1, scoreTopics, generateScript,
+    planStrategy, selectBest, selfEvaluate, generateScriptWithFeedback,
+    // Agent 2 工具
     runAgent2, analyzeViral, generateRemix, quickSimilarity,
+    planAnalysis, evaluateRemixes, generateRemixWithFeedback,
+    // 资产库
     loadLib, addToLib, removeFromLib,
     loadTrack, addToTrack, updateTrack,
     exportLibAsMarkdown

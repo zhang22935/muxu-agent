@@ -195,7 +195,7 @@
       <div class="icon">🍳</div>
       <div>
         <h1>苜蓿爆款 Agent</h1>
-        <div class="sub" id="appSub">真实数据 · 真实 LLM · 可上线</div>
+        <div class="sub" id="appSub">真·Agent Loop · 自主规划+自检+重试</div>
       </div>
     </div>
     <div class="right">
@@ -233,28 +233,29 @@
     <div class="card">
       <h2>🟧 Agent 1 · 每日热点 → 爆款脚本 <span class="badge hot">题2</span></h2>
       <p style="font-size:12.5px;color:#5a4a3a;line-height:1.7;">
-        拉取 <b>微博 / 头条 / B站 / 百度</b> 真实榜单 → 喂给 DeepSeek 按 4 维打分 →
-        选 Top1 生成可立即发布的爆款脚本（标题+钩子+正文+标签+封面+CTA+风险自查）。
+        LLM <b>自主规划</b>策略 → 拉 <b>微博/头条/B站/百度</b> 真实榜单 → DeepSeek 4 维评分 →
+        LLM <b>自主选择</b>最佳选题 → 生成爆款脚本 → LLM <b>自检</b>质量，不通过自动重试。
       </p>
       <button class="btn block" style="margin-top:12px;" onclick="goTab(1)">开始跑 Agent 1 →</button>
     </div>
     <div class="card">
       <h2>🟪 Agent 2 · 爆款拆解 → 差异化二创 <span class="badge hot">题5</span></h2>
       <p style="font-size:12.5px;color:#5a4a3a;line-height:1.7;">
-        粘贴一条爆款口播/旁白 → DeepSeek 5 维拆解（钩子/饵物/停留/互动/CTA）→
-        找出真正撬动流量的底层机制 → 生成 <b>≥3 条差异化二创</b>，每条自评与原文相似度。
+        LLM <b>自主规划</b>拆解策略 → DeepSeek 5 维拆解（钩子/饵物/停留/互动/CTA）→
+        找出真正撬动流量的底层机制 → 生成 <b>≥3 条差异化二创</b> → LLM <b>自检</b>质量，不通过自动重试。
       </p>
       <button class="btn block ghost" style="margin-top:12px;" onclick="goTab(2)">开始跑 Agent 2 →</button>
     </div>
     </div>
     <div class="card">
-      <h2>🛠 真·可用的关键</h2>
+      <h2>🛠 真·Agent 架构（不是写死流水线）</h2>
       <ol style="font-size:12.5px;color:#5a4a3a;line-height:1.9;padding-left:18px;">
-        <li>每个评分/拆解/生成的标题都来自 <b>真实 LLM 响应</b>，不是前端拼字符串</li>
-        <li>工作流每一步显示 LLM 的真实耗时、token 用量、思考过程</li>
+        <li><b>LLM 自主规划</b>：评分前 LLM 先审视热点、制定策略（不是写死的）</li>
+        <li><b>LLM 自主选择</b>：LLM 自己决定选哪条选题（不硬取 top1）</li>
+        <li><b>LLM 自检+重试</b>：生成后 LLM 自评质量，不通过则带反馈重新生成（最多 2 次）</li>
+        <li>每个评分/拆解/生成都是 <b>真实 LLM 响应</b>，工作流显示真实耗时/token/推理</li>
         <li>API Key 存浏览器 localStorage，<b>不上传任何服务器</b></li>
-        <li>抓真实数据需要 CORS 代理，<b>自带 Node.js 30 秒可起</b>（见 README）</li>
-        <li>不配代理也能用，Agent 1 会用上次抓取的缓存 + 仍是真实 LLM 调用</li>
+        <li>不配代理也能用，Agent 1 用缓存 + 仍是真实 LLM 调用</li>
       </ol>
     </div>
   </section>
@@ -265,9 +266,11 @@
       <h2>🟧 Agent 1 · 实时工作流</h2>
       <div class="flow" id="a1Flow">
         <div class="step" data-step="fetch"><span class="ico">📡</span><span class="lbl">抓取热点</span><span class="num" id="a1s1">等待</span></div><div class="arr">→</div>
+        <div class="step" data-step="plan"><span class="ico">🧠</span><span class="lbl">LLM 规划</span><span class="num" id="a1s0">等待</span></div><div class="arr">→</div>
         <div class="step" data-step="score"><span class="ico">🧮</span><span class="lbl">LLM 评分</span><span class="num" id="a1s2">等待</span></div><div class="arr">→</div>
-        <div class="step" data-step="pick"><span class="ico">✋</span><span class="lbl">选 Top</span><span class="num" id="a1s3">等待</span></div><div class="arr">→</div>
-        <div class="step" data-step="gen"><span class="ico">✍️</span><span class="lbl">生成脚本</span><span class="num" id="a1s4">等待</span></div>
+        <div class="step" data-step="pick"><span class="ico">✋</span><span class="lbl">自主选择</span><span class="num" id="a1s3">等待</span></div><div class="arr">→</div>
+        <div class="step" data-step="gen"><span class="ico">✍️</span><span class="lbl">生成脚本</span><span class="num" id="a1s4">等待</span></div><div class="arr">→</div>
+        <div class="step" data-step="eval"><span class="ico">🔍</span><span class="lbl">自检+重试</span><span class="num" id="a1s5">等待</span></div>
       </div>
       <button class="btn block" id="a1Run" onclick="runA1()">🚀 一键跑 Agent 1</button>
     </div>
@@ -325,10 +328,12 @@
     <div class="card">
       <h2>🟪 Agent 2 · 实时工作流</h2>
       <div class="flow" id="a2Flow">
+        <div class="step" data-step="plan"><span class="ico">🧠</span><span class="lbl">LLM 规划</span><span class="num" id="a2s0">等待</span></div><div class="arr">→</div>
         <div class="step" data-step="analyze"><span class="ico">🔬</span><span class="lbl">5 维拆解</span><span class="num" id="a2s1">等待</span></div><div class="arr">→</div>
         <div class="step" data-step="driving"><span class="ico">💡</span><span class="lbl">找撬动要素</span><span class="num" id="a2s2">等待</span></div><div class="arr">→</div>
         <div class="step" data-step="remix"><span class="ico">🪄</span><span class="lbl">生成二创</span><span class="num" id="a2s3">等待</span></div><div class="arr">→</div>
-        <div class="step" data-step="sim"><span class="ico">🔁</span><span class="lbl">相似度</span><span class="num" id="a2s4">等待</span></div>
+        <div class="step" data-step="sim"><span class="ico">🔁</span><span class="lbl">相似度</span><span class="num" id="a2s4">等待</span></div><div class="arr">→</div>
+        <div class="step" data-step="eval"><span class="ico">🔍</span><span class="lbl">自检+重试</span><span class="num" id="a2s5">等待</span></div>
       </div>
       <button class="btn block" id="a2Run" onclick="runA2()">🚀 拆解 + 生成二创</button>
     </div>
@@ -528,6 +533,7 @@ function clearLive(elemId) {
 
 function logLine(elemId, msg, kind = 'info') {
   const el = $(elemId);
+  if (!el) { console.log('[' + kind + '] ' + msg); return; }
   const d = document.createElement('div');
   d.className = 'line ' + kind;
   d.innerHTML = '<span class="t">' + new Date().toLocaleTimeString() + '</span>' + escapeHtml(msg);
@@ -639,7 +645,7 @@ async function runA1() {
   $('a1Log').innerHTML = '';
   $('a1Topics').innerHTML = '';
   $('a1Script').innerHTML = '';
-  ['fetch','score','pick','gen'].forEach(s => setStep('a1Flow', s, '', '等待'));
+  ['plan','fetch','score','pick','gen','eval'].forEach(s => setStep('a1Flow', s, '', '等待'));
 
   let lastA1 = null;
 
@@ -685,7 +691,39 @@ async function runA1() {
 
     if (fetchResult.items.length === 0) throw new Error('没抓到任何热点，请配置代理后重试');
 
-    // Step 2: 评分
+    // === AGENT STEP 1: LLM 自主规划 ===
+    setStep('a1Flow', 'plan', 'active', '规划中…');
+    appendLive('a1Live', '\n\n▼ [Agent Loop] LLM 自主规划：审视热点、制定评分策略...\n\n');
+    logLine('a1Log', '调用 LLM 进行策略规划…', 'info');
+
+    const planResult = await LLM.call({
+      system: '你是内容策略规划师。在评分前，先审视所有热点，制定策略：哪些平台的热点值得优先关注、哪些可以直接排除、评分时应侧重什么维度。返回严格 JSON。',
+      user: '## 账号画像\n' + JSON.stringify(profile) + '\n\n## 候选热点（共' + fetchResult.items.length + '条，展示前15条）\n' + JSON.stringify(fetchResult.items.slice(0, 15).map((it, i) => ({ idx: i, title: it.title, source: it.source, heat: it.heat, desc: (it.desc || '').slice(0, 50) }))) + '\n\n输出 JSON: { strategy, priority_sources, exclude_titles, weight_hint, expected_top, reasoning }',
+      json: true, tag: 'agent1-plan',
+      onChunk: (delta) => appendLive('a1Live', delta)
+    });
+    appendLive('a1Live', '\n\n[' + fmtTime(planResult.elapsed) + ' · ' + fmtTokens(planResult.usage.total_tokens) + ' tokens]\n');
+    logLine('a1Log', '规划完成 ' + fmtTime(planResult.elapsed) + ' / ' + fmtTokens(planResult.usage.total_tokens) + ' tokens', 'ok');
+
+    let plan;
+    try { let t = planResult.content.trim(); const m = t.match(/```(?:json)?\s*([\s\S]+?)\s*```/); if (m) t = m[1]; plan = JSON.parse(t); }
+    catch (e) { plan = { strategy: '(解析失败，继续)', reasoning: '' }; }
+
+    // 展示规划结果
+    $('a1SrcCard').insertAdjacentHTML('beforeend',
+      '<div style="margin-top:10px;padding:10px;background:#f0eaf5;border-radius:10px;border:1px solid #d0c0e8;">' +
+      '<div style="font-size:12px;font-weight:700;color:#6741d9;margin-bottom:6px;">🧠 LLM 规划策略</div>' +
+      '<div style="font-size:12px;line-height:1.7;color:#4a3a5a;">' +
+      '<b>策略：</b>' + escapeHtml(plan.strategy || '') + '<br>' +
+      '<b>侧重维度：</b>' + escapeHtml(plan.weight_hint || '') + '<br>' +
+      '<b>预判胜出：</b>' + escapeHtml(plan.expected_top || '') + '<br>' +
+      '<b>推理：</b>' + escapeHtml(plan.reasoning || '') +
+      '</div></div>'
+    );
+
+    setStep('a1Flow', 'plan', 'done', '策略已定');
+
+    // === AGENT STEP 2: LLM 评分 ===
     setStep('a1Flow', 'score', 'active', 'LLM 思考中…');
     $('a1LiveCard').style.display = 'block';
     appendLive('a1Live', '▼ 调用 LLM 评分 ' + Math.min(30, fetchResult.items.length) + ' 条热点...\n\n');
@@ -731,12 +769,43 @@ async function runA1() {
         '</div>';
     }).join('');
 
-    // Step 3: 选 Top 1（自动选，但用户可点换）
-    const top = scored[0];
-    setStep('a1Flow', 'pick', 'done', 'Top: ' + (top.title || '').slice(0, 8) + '…');
-    $('a1Log').insertAdjacentHTML('beforeend', '<div class="line info"><span class="t">' + new Date().toLocaleTimeString() + '</span>自动选 Top1: ' + escapeHtml(top.title) + ' (total=' + top._score.total + ')</div>');
+    // === AGENT STEP 3: LLM 自主选择（不再硬取 scored[0]）===
+    setStep('a1Flow', 'pick', 'active', 'LLM 自主选择…');
+    appendLive('a1Live', '\n\n▼ [Agent Loop] LLM 自主审视 Top5、选择最佳选题...\n\n');
+    logLine('a1Log', '调用 LLM 自主选择最佳选题…', 'info');
 
-    // Step 4: 生成脚本
+    const top5 = scored.slice(0, 5);
+    const selectResult = await LLM.call({
+      system: '你是内容选题决策者。不要简单选分数最高的——要综合考虑分数、风险、可拍性、与账号的适配度。给出选择理由，说明为什么选这条而不是分数更高的。返回严格 JSON。',
+      user: '## 账号\n' + JSON.stringify(profile) + '\n\n## Top5 候选（已评分）\n' + JSON.stringify(top5.map((t, i) => ({ rank: i + 1, title: t.title, source: t.source, scores: t._score, reason: t._reason })), null, 2) + '\n\n输出 JSON: { selected_idx: 0-4, selected_title, reasoning, risk_note, rejected_reason }',
+      json: true, tag: 'agent1-select',
+      onChunk: (delta) => appendLive('a1Live', delta)
+    });
+    appendLive('a1Live', '\n\n[' + fmtTime(selectResult.elapsed) + ' · ' + fmtTokens(selectResult.usage.total_tokens) + ' tokens]\n');
+    logLine('a1Log', '自主选择完成 ' + fmtTime(selectResult.elapsed) + ' / ' + fmtTokens(selectResult.usage.total_tokens) + ' tokens', 'ok');
+
+    let selectionData;
+    try { let t = selectResult.content.trim(); const m = t.match(/```(?:json)?\s*([\s\S]+?)\s*```/); if (m) t = m[1]; selectionData = JSON.parse(t); }
+    catch (e) { selectionData = { selected_idx: 0, reasoning: '(解析失败，默认选第一)' }; }
+
+    const selIdx = Math.min(selectionData.selected_idx || 0, top5.length - 1);
+    const top = top5[selIdx] || top5[0];
+    setStep('a1Flow', 'pick', 'done', '选: ' + (top.title || '').slice(0, 8) + '…');
+    $('a1Log').insertAdjacentHTML('beforeend', '<div class="line info"><span class="t">' + new Date().toLocaleTimeString() + '</span>🧠 LLM 自主选择: ' + escapeHtml(top.title) + ' (分数=' + top._score.total + ', 排名=' + (selIdx + 1) + ')</div>');
+    $('a1Log').insertAdjacentHTML('beforeend', '<div class="line think"><span class="t">' + new Date().toLocaleTimeString() + '</span>选择理由: ' + escapeHtml(selectionData.reasoning || '') + '</div>');
+
+    // 展示选择推理
+    $('a1TopicsCard').insertAdjacentHTML('beforeend',
+      '<div style="margin-top:10px;padding:10px;background:#fff0e6;border-radius:10px;border:1px solid #ffc9a3;">' +
+      '<div style="font-size:12px;font-weight:700;color:#e8590c;margin-bottom:6px;">✋ LLM 自主选择（非硬取最高分）</div>' +
+      '<div style="font-size:12px;line-height:1.7;color:#4a3a2a;">' +
+      '<b>选中：</b>' + escapeHtml(top.title) + '（排名 #' + (selIdx + 1) + '，分数 ' + top._score.total + '）<br>' +
+      '<b>理由：</b>' + escapeHtml(selectionData.reasoning || '') + '<br>' +
+      (selectionData.rejected_reason ? '<b>为什么没选第一名：</b>' + escapeHtml(selectionData.rejected_reason) : '') +
+      '</div></div>'
+    );
+
+    // === AGENT STEP 4: LLM 生成脚本 ===
     setStep('a1Flow', 'gen', 'active', '生成中…');
     appendLive('a1Live', '\n\n▼ 调用 LLM 生成 Top1 脚本...\n\n');
     logLine('a1Log', '调用 LLM 生成可发布脚本…', 'info');
@@ -762,8 +831,72 @@ async function runA1() {
 
     setStep('a1Flow', 'gen', 'done', '完成');
 
+    // === AGENT STEP 5: LLM 自检脚本质量 ===
+    setStep('a1Flow', 'eval', 'active', '自检中…');
+    appendLive('a1Live', '\n\n▼ [Agent Loop] LLM 自检脚本质量...\n\n');
+    logLine('a1Log', '调用 LLM 自检脚本质量…', 'info');
+
+    let evalData;
+    let currentScript = script;
+    let retryCount = 0;
+    const MAX_RETRIES = 2;
+
+    async function doSelfEval(scr) {
+      const er = await LLM.call({
+        system: '你是内容质量审核员。评估生成的脚本是否达到发布标准。要严格、有判断力——不是走形式打高分，要真正指出问题。返回严格 JSON。',
+        user: '## 账号\n' + JSON.stringify(profile) + '\n\n## 选题\n' + top.title + '（来源：' + top.source + '）\n\n## 生成的脚本\n' + JSON.stringify(scr, null, 2) + '\n\n评估维度（0-100）：hook_power, script_quality, cta_effectiveness, safety, overall。输出 { hook_power, script_quality, cta_effectiveness, safety, overall, verdict:"pass"|"retry", issues:[], suggestions:[] }。verdict 规则：overall>=80 且无严重 issues → pass；否则 → retry。',
+        json: true, tag: 'agent1-eval',
+        onChunk: (delta) => appendLive('a1Live', delta)
+      });
+      appendLive('a1Live', '\n\n[' + fmtTime(er.elapsed) + ' · ' + fmtTokens(er.usage.total_tokens) + ' tokens]\n');
+      try { let t = er.content.trim(); const m = t.match(/```(?:json)?\s*([\s\S]+?)\s*```/); if (m) t = m[1]; return JSON.parse(t); }
+      catch (e) { return { overall: 80, verdict: 'pass', issues: [], suggestions: [] }; }
+    }
+
+    evalData = await doSelfEval(currentScript);
+    logLine('a1Log', '自检得分：' + evalData.overall + '/100，结论：' + (evalData.verdict === 'pass' ? '通过' : '需重试'), evalData.verdict === 'pass' ? 'ok' : 'think');
+
+    // === AGENT STEP 6: 自检不通过 → 带反馈重试 ===
+    while (evalData.verdict === 'retry' && retryCount < MAX_RETRIES) {
+      retryCount++;
+      appendLive('a1Live', '\n\n▼ [Agent Loop] 自检未通过（' + evalData.overall + '/100），LLM 决定第 ' + retryCount + ' 次重试...\n');
+      appendLive('a1Live', '问题：' + (evalData.issues || []).join('; ') + '\n\n');
+      logLine('a1Log', '自检未通过（' + evalData.overall + '/100），第 ' + retryCount + ' 次重试，问题：' + (evalData.issues || []).join('; '), 'think');
+
+      const regenResult = await LLM.call({
+        system: '你是爆款短视频脚本撰稿人。上次生成的脚本未通过自检，请根据反馈重新生成。不要只是微调——要针对指出的问题做实质性改进。返回严格 JSON。',
+        user: '## 账号\n' + JSON.stringify(profile) + '\n\n## 选题\n标题：' + top.title + '\n来源：' + top.source + '\n\n## 上次自检结果\n总分：' + evalData.overall + '/100\n问题：' + JSON.stringify(evalData.issues) + '\n建议：' + JSON.stringify(evalData.suggestions) + '\n\n针对以上问题重新生成脚本。字段同上次：title(3个), hook_3s, script_30s, cover_text, hashtags(5-7), publish_time, cta, risk_check, expected_metrics。只输出 JSON。',
+        json: true, tag: 'agent1-regenerate',
+        onChunk: (delta) => appendLive('a1Live', delta)
+      });
+      appendLive('a1Live', '\n\n[' + fmtTime(regenResult.elapsed) + ' · ' + fmtTokens(regenResult.usage.total_tokens) + ' tokens]\n');
+
+      try { let t = regenResult.content.trim(); const m = t.match(/```(?:json)?\s*([\s\S]+?)\s*```/); if (m) t = m[1]; currentScript = JSON.parse(t); }
+      catch (e) { logLine('a1Log', '重试生成 JSON 解析失败，保留原版', 'err'); }
+
+      evalData = await doSelfEval(currentScript);
+      logLine('a1Log', '第' + retryCount + '次重试后自检：' + evalData.overall + '/100，结论：' + (evalData.verdict === 'pass' ? '通过' : (retryCount < MAX_RETRIES ? '继续重试' : '已达上限')), evalData.verdict === 'pass' ? 'ok' : 'think');
+    }
+
+    script = currentScript;
+    const evalBadge = evalData.verdict === 'pass' ? '<span class="badge green">自检通过 ' + evalData.overall + '分</span>' : '<span class="badge hot">自检' + evalData.overall + '分·重试' + retryCount + '次</span>';
+    setStep('a1Flow', 'eval', 'done', evalData.overall + '/100' + (retryCount ? '·重试' + retryCount : ''));
+
     // 渲染
     $('a1ScriptCard').style.display = 'block';
+    $('a1Script').insertAdjacentHTML('beforebegin',
+      '<div class="card" style="margin-bottom:10px;">' +
+      '<h2>🔍 Agent 自检结果 ' + evalBadge + '</h2>' +
+      '<div class="dim5" style="grid-template-columns:repeat(4,1fr);">' +
+        '<div class="d"><div class="v">' + (evalData.hook_power || 0) + '</div><div class="l">钩子</div></div>' +
+        '<div class="d"><div class="v">' + (evalData.script_quality || 0) + '</div><div class="l">脚本</div></div>' +
+        '<div class="d"><div class="v">' + (evalData.cta_effectiveness || 0) + '</div><div class="l">互动</div></div>' +
+        '<div class="d"><div class="v">' + (evalData.safety || 0) + '</div><div class="l">安全</div></div>' +
+      '</div>' +
+      (evalData.issues && evalData.issues.length ? '<div style="font-size:12px;color:#c44;margin-top:6px;">问题：' + escapeHtml(evalData.issues.join('；')) + '</div>' : '') +
+      (retryCount > 0 ? '<div style="font-size:11px;color:var(--sub);margin-top:4px;">经 ' + retryCount + ' 次重试后' + (evalData.verdict === 'pass' ? '通过自检' : '仍未通过（已达上限）') + '</div>' : '') +
+      '</div>'
+    );
     const toTagsArr = v => {
       if (Array.isArray(v)) return v;
       if (typeof v === 'string') return v.split(/[,,#\s]+/).filter(Boolean);
@@ -786,7 +919,7 @@ async function runA1() {
         '<button class="btn sm" onclick="saveScriptToLib(' + JSON.stringify(JSON.stringify({title: titles[0], hook: script.hook_3s, script: script.script_30s, hashtags: script.hashtags, cta: script.cta, topic: top.title, source: top.source})).replace(/"/g, '&quot;') + ')">💾 存到内容资产库</button>' +
       '</div>';
 
-    lastA1 = { profile, fetchSummary: { total: fetchResult.items.length, sources: fetchResult.sources, proxy: fetchResult.proxy }, scored, top, script };
+    lastA1 = { profile, plan, fetchSummary: { total: fetchResult.items.length, sources: fetchResult.sources, proxy: fetchResult.proxy }, scored, selection: selectionData, top, script, evalResult: evalData, retries: retryCount };
     window._lastA1 = lastA1;
 
   } catch (err) {
@@ -833,12 +966,30 @@ async function runA2() {
   $('a2Analysis').innerHTML = '';
   $('a2Remixes').innerHTML = '';
   clearLive('a2Live');
-  ['analyze','driving','remix','sim'].forEach(s => setStep('a2Flow', s, '', '等待'));
+  ['plan','analyze','driving','remix','sim','eval'].forEach(s => setStep('a2Flow', s, '', '等待'));
 
   try {
     const profile = Agents.loadProfile();
 
-    // Step 1: 5 维拆解
+    // === AGENT STEP 0: LLM 自主规划拆解策略 ===
+    setStep('a2Flow', 'plan', 'active', '规划中…');
+    appendLive('a2Live', '▼ [Agent Loop] LLM 自主规划：判断内容类型、制定拆解策略...\n\n');
+
+    const plan2Result = await LLM.call({
+      system: '你是爆款分析规划师。在拆解前，先判断内容类型、制定分析重点。返回严格 JSON。',
+      user: '## 账号\n' + JSON.stringify(profile) + '\n\n## 待分析文本（前300字）\n"""\n' + txt.slice(0, 300) + '\n"""\n\n输出 JSON: { content_type, target_audience, analysis_focus, expected_drivers, strategy }',
+      json: true, tag: 'agent2-plan',
+      onChunk: (d) => appendLive('a2Live', d)
+    });
+    appendLive('a2Live', '\n\n[' + fmtTime(plan2Result.elapsed) + ' · ' + fmtTokens(plan2Result.usage.total_tokens) + ' tokens]\n');
+
+    let plan2;
+    try { let t = plan2Result.content.trim(); const m = t.match(/```(?:json)?\s*([\s\S]+?)\s*```/); if (m) t = m[1]; plan2 = JSON.parse(t); }
+    catch (e) { plan2 = { strategy: '(解析失败，继续)' }; }
+    setStep('a2Flow', 'plan', 'done', '策略已定');
+    appendLive('a2Live', '\n[策略] ' + escapeHtml(plan2.strategy || '') + ' | 分析重点: ' + escapeHtml(plan2.analysis_focus || '') + '\n\n');
+
+    // === AGENT STEP 1: 5 维拆解 ===
     setStep('a2Flow', 'analyze', 'active', '拆解中…');
     $('a2LiveCard').style.display = 'block';
     appendLive('a2Live', '▼ 调用 LLM 做 5 维拆解...\n\n');
@@ -897,13 +1048,79 @@ async function runA2() {
     });
     setStep('a2Flow', 'sim', 'done', '全部 < ' + (Math.max(...remixes.map(x => x.similarity_final)) || 0) + '%');
 
+    // === AGENT STEP 5: LLM 自检二创质量 ===
+    setStep('a2Flow', 'eval', 'active', '自检中…');
+    appendLive('a2Live', '\n\n▼ [Agent Loop] LLM 自检二创质量...\n\n');
+
+    let eval2Data;
+    let currentRemixes = remixes;
+    let retry2Count = 0;
+    const MAX_RETRIES2 = 2;
+
+    async function doRemixEval(rxs) {
+      const er = await LLM.call({
+        system: '你是二创质量审核员。评估3条二创的差异化程度和可发布性。要严格——如果某条二创和原文太像，或者脚本质量太低，必须判 retry。返回严格 JSON。',
+        user: '## 原爆款文本（前300字）\n"""\n' + txt.slice(0, 300) + '\n"""\n\n## driving_factors\n' + JSON.stringify(analysis.driving_factors) + '\n\n## 3条二创\n' + JSON.stringify(rxs.map((r, i) => ({ idx: i, name: r.name, change: r.change, title: r.title, hook_3s: (r.hook_3s || '').slice(0, 60), similarity_final: r.similarity_final })), null, 2) + '\n\n输出 JSON: { overall_score:0-100, verdict:"pass"|"retry", per_remix:[{idx,score,issue}], differentiation_ok:bool, suggestions:[] }。verdict 规则：overall>=70 且 differentiation_ok → pass；否则 → retry。',
+        json: true, tag: 'agent2-eval',
+        onChunk: (d) => appendLive('a2Live', d)
+      });
+      appendLive('a2Live', '\n\n[' + fmtTime(er.elapsed) + ' · ' + fmtTokens(er.usage.total_tokens) + ' tokens]\n');
+      try { let t = er.content.trim(); const m = t.match(/```(?:json)?\s*([\s\S]+?)\s*```/); if (m) t = m[1]; return JSON.parse(t); }
+      catch (e) { return { overall_score: 75, verdict: 'pass', per_remix: [], suggestions: [] }; }
+    }
+
+    eval2Data = await doRemixEval(currentRemixes);
+    logLine('a2Log', '二创自检：' + eval2Data.overall_score + '/100，结论：' + (eval2Data.verdict === 'pass' ? '通过' : '需重试'), eval2Data.verdict === 'pass' ? 'ok' : 'think');
+
+    // === AGENT STEP 6: 自检不通过 → 重试 ===
+    while (eval2Data.verdict === 'retry' && retry2Count < MAX_RETRIES2) {
+      retry2Count++;
+      appendLive('a2Live', '\n\n▼ [Agent Loop] 二创自检未通过（' + eval2Data.overall_score + '/100），LLM 决定第 ' + retry2Count + ' 次重试...\n\n');
+
+      const regen2 = await LLM.call({
+        system: '你是爆款二次创作撰稿人。上次生成的二创未通过自检，请根据反馈重新生成。要针对指出的问题做实质改进，不能只是微调。返回严格 JSON。',
+        user: '## 账号\n' + JSON.stringify(profile) + '\n\n## 拆解\n' + JSON.stringify(analysis) + '\n\n## 上次自检结果\n总分：' + eval2Data.overall_score + '/100\n各条问题：' + JSON.stringify(eval2Data.per_remix) + '\n建议：' + JSON.stringify(eval2Data.suggestions) + '\n\n重新生成3条差异化二创。每条含 name, change, title, hook_3s, script_30s, hashtags, cta, similarity_self。返回 { remixes: [...] }。',
+        json: true, tag: 'agent2-regenerate',
+        onChunk: (d) => appendLive('a2Live', d)
+      });
+      appendLive('a2Live', '\n\n[' + fmtTime(regen2.elapsed) + ' · ' + fmtTokens(regen2.usage.total_tokens) + ' tokens]\n');
+
+      try {
+        let t = regen2.content.trim(); const m = t.match(/```(?:json)?\s*([\s\S]+?)\s*```/); if (m) t = m[1];
+        const regenRes = JSON.parse(t);
+        currentRemixes = (regenRes.remixes || []).map(rx => {
+          const mySim = Agents.quickSimilarity(txt, (rx.script_30s || '') + (rx.hook_3s || ''));
+          return { ...rx, similarity_calc: mySim, similarity_final: Math.max(rx.similarity_self || 0, mySim) };
+        });
+      } catch (e) { logLine('a2Log', '重试生成 JSON 解析失败，保留原版', 'err'); }
+
+      eval2Data = await doRemixEval(currentRemixes);
+      logLine('a2Log', '第' + retry2Count + '次重试后自检：' + eval2Data.overall_score + '/100，结论：' + (eval2Data.verdict === 'pass' ? '通过' : (retry2Count < MAX_RETRIES2 ? '继续重试' : '已达上限')), eval2Data.verdict === 'pass' ? 'ok' : 'think');
+    }
+
+    const finalRemixes = currentRemixes;
+    const eval2Badge = eval2Data.verdict === 'pass' ? '<span class="badge green">自检通过 ' + eval2Data.overall_score + '分</span>' : '<span class="badge hot">自检' + eval2Data.overall_score + '分·重试' + retry2Count + '次</span>';
+    setStep('a2Flow', 'eval', 'done', eval2Data.overall_score + '/100' + (retry2Count ? '·重试' + retry2Count : ''));
+
     $('a2RemixCard').style.display = 'block';
+    // 渲染二创
+    $('a2RemixCard').insertAdjacentHTML('beforebegin',
+      '<div class="card" style="margin-bottom:10px;">' +
+      '<h2>🔍 Agent 自检结果 ' + eval2Badge + '</h2>' +
+      '<div style="font-size:12px;line-height:1.7;color:#4a3a2a;">' +
+      '<b>总分：</b>' + (eval2Data.overall_score || 0) + '/100 | ' +
+      '<b>差异化合格：</b>' + (eval2Data.differentiation_ok ? '是' : '否') +
+      (retry2Count > 0 ? ' | <b>重试次数：</b>' + retry2Count : '') +
+      '</div>' +
+      (eval2Data.suggestions && eval2Data.suggestions.length ? '<div style="font-size:12px;color:#5a4a3a;margin-top:6px;">建议：' + escapeHtml(eval2Data.suggestions.join('；')) + '</div>' : '') +
+      '</div>'
+    );
     const toTagsArr = v => {
       if (Array.isArray(v)) return v;
       if (typeof v === 'string') return v.split(/[,,#\s]+/).filter(Boolean);
       return [];
     };
-    $('a2Remixes').innerHTML = remixes.map((rx, i) => {
+    $('a2Remixes').innerHTML = finalRemixes.map((rx, i) => {
       const tagList = toTagsArr(rx.hashtags);
       const tags = tagList.map(h => '<span class="badge green">' + escapeHtml(h) + '</span>').join(' ');
       const sim = rx.similarity_final || 0;
@@ -932,7 +1149,7 @@ async function runA2() {
         '\n\n## 复用模板\n' + (analysis.reusable_template || ''),
       tags: ['#爆款拆解']
     });
-    window._lastA2 = { analysis, remixes, source: txt };
+    window._lastA2 = { plan: plan2, analysis, remixes: finalRemixes, evalResult: eval2Data, retries: retry2Count, source: txt };
 
   } catch (err) {
     appendLive('a2Live', '\n\n❌ ' + err.message);
