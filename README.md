@@ -177,6 +177,28 @@ git push -u origin main
 
 ---
 
+## Agent Loop 架构（不是写死流水线）
+
+两个 Agent 都采用 **LLM 自主决策** 的 Agent Loop 模式，而非固定代码流水线：
+
+```
+Agent 1:  抓取 → LLM自主规划 → LLM评分 → LLM自主选择 → LLM生成 → LLM自检 → (不通过则重试)
+Agent 2:  LLM自主规划 → LLM5维拆解 → LLM找撬动要素 → LLM生成二创 → 相似度校验 → LLM自检 → (不通过则重试)
+```
+
+| Agent 特征 | 实现 |
+|---|---|
+| **自主规划** | 评分/拆解前，LLM 先审视数据制定策略（planStrategy / planAnalysis） |
+| **自主决策** | LLM 自己选最佳选题，不硬取 `top5[0]`（selectBest） |
+| **自我反思** | 生成后 LLM 自评质量 0-100 分，不通过则带反馈重试（selfEvaluate / evaluateRemixes） |
+| **重试循环** | 最多 2 次重试，每次把自检发现的问题喂回 LLM 重新生成 |
+
+新增函数（agents.js）：
+- Agent 1: `planStrategy`, `selectBest`, `selfEvaluate`, `generateScriptWithFeedback`
+- Agent 2: `planAnalysis`, `evaluateRemixes`, `generateRemixWithFeedback`
+
+---
+
 ## 自检 Checklist
 
 部署前请逐条过：
@@ -193,6 +215,7 @@ git push -u origin main
 
 - **真实数据**：见 fetchers.js，4 路源 + CORS 策略 + 缓存兜底
 - **真实 LLM**：见 llm.js 和 agents.js，每次评分/拆解/生成都打 `LLM.call`/`LLM.callJSON`
+- **Agent Loop**：LLM 自主规划→自主选择→自检→重试，不是写死的代码流水线
 - **工作流可视化**：UI 上每个 step 都有"等待/进行中/完成"三态 + 真实耗时/token
 - **可复用**：4 个模块解耦清晰，UI/数据/业务/持久化分开，换 LLM 或加源都很容易
 - **可上线**：纯静态，GitHub Pages 一行 push 就发布
