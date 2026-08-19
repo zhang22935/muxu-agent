@@ -552,6 +552,47 @@ function setStep(flowId, stepName, status, text) {
   if (num && text) num.textContent = text;
 }
 
+// 健壮 JSON 解析：先尝试直接 parse；失败则尝试修复被截断的 JSON 再 parse
+// 解决 LLM max_tokens 截断导致的 "Unterminated string" 问题
+function repairTruncatedJSON(txt) {
+  let s = txt.trim();
+  s = s.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  let braces = 0, brackets = 0, inStr = false, esc = false;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (esc) { esc = false; continue; }
+    if (c === '\\') { esc = true; continue; }
+    if (c === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (c === '{') braces++;
+    else if (c === '}') braces--;
+    else if (c === '[') brackets++;
+    else if (c === ']') brackets--;
+  }
+  if (inStr) s += '"';
+  s = s.replace(/,\s*$/, '');
+  while (brackets > 0) { s += ']'; brackets--; }
+  while (braces > 0) { s += '}'; braces--; }
+  return s;
+}
+
+function safeJsonParse(content) {
+  let txt = (content || '').trim();
+  const m = txt.match(/```(?:json)?\s*([\s\S]+?)\s*```/);
+  if (m) txt = m[1];
+  try {
+    return { ok: true, data: JSON.parse(txt), repaired: false };
+  } catch (e) {
+    try {
+      const repaired = repairTruncatedJSON(txt);
+      const data = JSON.parse(repaired);
+      return { ok: true, data, repaired: true };
+    } catch (e2) {
+      return { ok: false, error: e2.message, rawLen: txt.length };
+    }
+  }
+}
+
 function copyToClipboard(text, btn) {
   navigator.clipboard.writeText(text).then(() => {
     if (btn) {
@@ -703,14 +744,16 @@ async function runA1() {
       system: '你是内容策略规划师。在评分前，先审视所有热点，制定策略：哪些平台的热点值得优先关注、哪些可以直接排除、评分时应侧重什么维度。返回严格 JSON。',
       user: '## 账号画像\n' + JSON.stringify(profile) + '\n\n## 候选热点（共' + fetchResult.items.length + '条，展示前15条）\n' + JSON.stringify(fetchResult.items.slice(0, 15).map((it, i) => ({ idx: i, title: it.title, source: it.source, heat: it.heat, desc: (it.desc || '').slice(0, 50) }))) + '\n\n输出 JSON: { strategy, priority_sources, exclude_titles, weight_hint, expected_top, reasoning }',
       json: true, tag: 'agent1-plan',
+      maxTokens: 5000,
       onChunk: (delta) => appendLive('a1Live', delta)
     });
     appendLive('a1Live', '\n\n[' + fmtTime(planResult.elapsed) + ' · ' + fmtTokens(planResult.usage.total_tokens) + ' tokens]\n');
     logLine('a1Log', '规划完成 ' + fmtTime(planResult.elapsed) + ' / ' + fmtTokens(planResult.usage.total_tokens) + ' tokens', 'ok');
 
     let plan;
-    try { let t = planResult.content.trim(); const m = t.match(/```(?:json)?\s*([\s\S]+?)\s*```/); if (m) t = m[1]; plan = JSON.parse(t); }
-    catch (e) { plan = { strategy: '(解析失败，继续)', reasoning: '' }; }
+    const __r1 = safeJsonParse(planResult);
+        if (__r.ok) { plan = __r.data; }
+        else { plan = {  strategy: '(解析失败，继续)', reasoning: ''  }; }
 
     // 展示规划结果
     $('a1SrcCard').insertAdjacentHTML('beforeend',
@@ -739,6 +782,7 @@ async function runA1() {
 
     const scoreResult = await LLM.call({
       system: sys, user: usr, json: true, tag: 'agent1-score',
+      maxTokens: 8000,
       onChunk: (delta, full) => appendLive('a1Live', delta),
       onThink: (rsn) => appendLive('a1Live', '', 'think')
     });
@@ -750,7 +794,9 @@ async function runA1() {
       let txt = scoreResult.content.trim();
       const m = txt.match(/```(?:json)?\s*([\s\S]+?)\s*```/);
       if (m) txt = m[1];
-      const j = JSON.parse(txt);
+      const __safe = safeJsonParse(scoreResult.content);
+      if (!__safe.ok) throw new Error(__safe.error);
+      const j = __safe.data;
       scored = (j.scored || []).map(s => ({ ...compressed[s.idx], _score: s, _reason: s.reason })).sort((a, b) => b._score.total - a._score.total);
     } catch (e) {
       throw new Error('LLM 返回 JSON 解析失败：' + e.message);
@@ -782,14 +828,16 @@ async function runA1() {
       system: '你是内容选题决策者。不要简单选分数最高的——要综合考虑分数、风险、可拍性、与账号的适配度。给出选择理由，说明为什么选这条而不是分数更高的。返回严格 JSON。',
       user: '## 账号\n' + JSON.stringify(profile) + '\n\n## Top5 候选（已评分）\n' + JSON.stringify(top5.map((t, i) => ({ rank: i + 1, title: t.title, source: t.source, scores: t._score, reason: t._reason })), null, 2) + '\n\n输出 JSON: { selected_idx: 0-4, selected_title, reasoning, risk_note, rejected_reason }',
       json: true, tag: 'agent1-select',
+      maxTokens: 4000,
       onChunk: (delta) => appendLive('a1Live', delta)
     });
     appendLive('a1Live', '\n\n[' + fmtTime(selectResult.elapsed) + ' · ' + fmtTokens(selectResult.usage.total_tokens) + ' tokens]\n');
     logLine('a1Log', '自主选择完成 ' + fmtTime(selectResult.elapsed) + ' / ' + fmtTokens(selectResult.usage.total_tokens) + ' tokens', 'ok');
 
     let selectionData;
-    try { let t = selectResult.content.trim(); const m = t.match(/```(?:json)?\s*([\s\S]+?)\s*```/); if (m) t = m[1]; selectionData = JSON.parse(t); }
-    catch (e) { selectionData = { selected_idx: 0, reasoning: '(解析失败，默认选第一)' }; }
+    const __r2 = safeJsonParse(selectResult);
+        if (__r.ok) { selectionData = __r.data; }
+        else { selectionData = {  selected_idx: 0, reasoning: '(解析失败，默认选第一)'  }; }
 
     const selIdx = Math.min(selectionData.selected_idx || 0, top5.length - 1);
     const top = top5[selIdx] || top5[0];
@@ -817,6 +865,7 @@ async function runA1() {
       system: '你是爆款短视频脚本撰稿人。返回严格 JSON。',
       user: '## 账号\n' + JSON.stringify(profile) + '\n\n## 选题\n' + JSON.stringify({ title: top.title, source: top.source, desc: top.desc, reason: top._reason }) + '\n\n## 任务\n生成 3 个备选标题、3 秒钩子、30 秒分镜脚本、封面、5-7 标签、发布时间、CTA、风险自查、预期数据。返回 { title:[3], hook_3s, script_30s, cover_text, hashtags:[5-7], publish_time, cta, risk_check, expected_metrics }。',
       json: true, tag: 'agent1-generate',
+      maxTokens: 6000,
       onChunk: (delta) => appendLive('a1Live', delta)
     });
     appendLive('a1Live', '\n\n[' + fmtTime(scriptResult.elapsed) + ' · ' + fmtTokens(scriptResult.usage.total_tokens) + ' tokens]\n');
@@ -824,10 +873,9 @@ async function runA1() {
 
     let script;
     try {
-      let txt = scriptResult.content.trim();
-      const m = txt.match(/```(?:json)?\s*([\s\S]+?)\s*```/);
-      if (m) txt = m[1];
-      script = JSON.parse(txt);
+      const __safe = safeJsonParse(scriptResult.content);
+      if (!__safe.ok) throw new Error(__safe.error);
+      script = __safe.data;
     } catch (e) {
       throw new Error('生成脚本 JSON 解析失败：' + e.message);
     }
@@ -849,11 +897,13 @@ async function runA1() {
         system: '你是内容质量审核员。评估生成的脚本是否达到发布标准。要严格、有判断力——不是走形式打高分，要真正指出问题。返回严格 JSON。',
         user: '## 账号\n' + JSON.stringify(profile) + '\n\n## 选题\n' + top.title + '（来源：' + top.source + '）\n\n## 生成的脚本\n' + JSON.stringify(scr, null, 2) + '\n\n评估维度（0-100）：hook_power, script_quality, cta_effectiveness, safety, overall。输出 { hook_power, script_quality, cta_effectiveness, safety, overall, verdict:"pass"|"retry", issues:[], suggestions:[] }。verdict 规则：overall>=80 且无严重 issues → pass；否则 → retry。',
         json: true, tag: 'agent1-eval',
+      maxTokens: 3000,
         onChunk: (delta) => appendLive('a1Live', delta)
       });
       appendLive('a1Live', '\n\n[' + fmtTime(er.elapsed) + ' · ' + fmtTokens(er.usage.total_tokens) + ' tokens]\n');
-      try { let t = er.content.trim(); const m = t.match(/```(?:json)?\s*([\s\S]+?)\s*```/); if (m) t = m[1]; return JSON.parse(t); }
-      catch (e) { return { overall: 80, verdict: 'pass', issues: [], suggestions: [] }; }
+      const __r3 = safeJsonParse(er);
+        if (__r.ok) return __r.data;
+        return {  overall: 80, verdict: 'pass', issues: [], suggestions: []  };
     }
 
     evalData = await doSelfEval(currentScript);
@@ -870,12 +920,14 @@ async function runA1() {
         system: '你是爆款短视频脚本撰稿人。上次生成的脚本未通过自检，请根据反馈重新生成。不要只是微调——要针对指出的问题做实质性改进。返回严格 JSON。',
         user: '## 账号\n' + JSON.stringify(profile) + '\n\n## 选题\n标题：' + top.title + '\n来源：' + top.source + '\n\n## 上次自检结果\n总分：' + evalData.overall + '/100\n问题：' + JSON.stringify(evalData.issues) + '\n建议：' + JSON.stringify(evalData.suggestions) + '\n\n针对以上问题重新生成脚本。字段同上次：title(3个), hook_3s, script_30s, cover_text, hashtags(5-7), publish_time, cta, risk_check, expected_metrics。只输出 JSON。',
         json: true, tag: 'agent1-regenerate',
+      maxTokens: 6000,
         onChunk: (delta) => appendLive('a1Live', delta)
       });
       appendLive('a1Live', '\n\n[' + fmtTime(regenResult.elapsed) + ' · ' + fmtTokens(regenResult.usage.total_tokens) + ' tokens]\n');
 
-      try { let t = regenResult.content.trim(); const m = t.match(/```(?:json)?\s*([\s\S]+?)\s*```/); if (m) t = m[1]; currentScript = JSON.parse(t); }
-      catch (e) { logLine('a1Log', '重试生成 JSON 解析失败，保留原版', 'err'); }
+      const __safe = safeJsonParse(regenResult.content);
+      if (__safe.ok) currentScript = __safe.data;
+      else logLine('a1Log', '重试生成 JSON 解析失败，保留原版（已尝试修复：' + __safe.error + '）', 'err');
 
       evalData = await doSelfEval(currentScript);
       logLine('a1Log', '第' + retryCount + '次重试后自检：' + evalData.overall + '/100，结论：' + (evalData.verdict === 'pass' ? '通过' : (retryCount < MAX_RETRIES ? '继续重试' : '已达上限')), evalData.verdict === 'pass' ? 'ok' : 'think');
@@ -982,13 +1034,15 @@ async function runA2() {
       system: '你是爆款分析规划师。在拆解前，先判断内容类型、制定分析重点。返回严格 JSON。',
       user: '## 账号\n' + JSON.stringify(profile) + '\n\n## 待分析文本（前300字）\n"""\n' + txt.slice(0, 300) + '\n"""\n\n输出 JSON: { content_type, target_audience, analysis_focus, expected_drivers, strategy }',
       json: true, tag: 'agent2-plan',
+      maxTokens: 4000,
       onChunk: (d) => appendLive('a2Live', d)
     });
     appendLive('a2Live', '\n\n[' + fmtTime(plan2Result.elapsed) + ' · ' + fmtTokens(plan2Result.usage.total_tokens) + ' tokens]\n');
 
     let plan2;
-    try { let t = plan2Result.content.trim(); const m = t.match(/```(?:json)?\s*([\s\S]+?)\s*```/); if (m) t = m[1]; plan2 = JSON.parse(t); }
-    catch (e) { plan2 = { strategy: '(解析失败，继续)' }; }
+    const __r4 = safeJsonParse(plan2Result);
+        if (__r.ok) { plan2 = __r.data; }
+        else { plan2 = {  strategy: '(解析失败，继续)'  }; }
     setStep('a2Flow', 'plan', 'done', '策略已定');
     appendLive('a2Live', '\n[策略] ' + escapeHtml(plan2.strategy || '') + ' | 分析重点: ' + escapeHtml(plan2.analysis_focus || '') + '\n\n');
 
@@ -1001,13 +1055,15 @@ async function runA2() {
       system: '你是爆款拆解专家。返回严格 JSON。',
       user: '## 爆款文本\n"""\n' + txt.slice(0, 3500) + '\n"""\n\n5 维评分（hook/bait/retention/interaction/cta 各 0-10）、一句话总结、driving_factors（≤3条撬动机制）、reusable_template、do_not_copy、do_copy。返回 { score_by_dim, score_summary, driving_factors, reusable_template, do_not_copy, do_copy }。',
       json: true, tag: 'agent2-analyze',
+      maxTokens: 5000,
       onChunk: (d) => appendLive('a2Live', d)
     });
     appendLive('a2Live', '\n\n[' + fmtTime(a1.elapsed) + ' · ' + fmtTokens(a1.usage.total_tokens) + ' tokens]\n');
 
     let analysis;
-    try { let t = a1.content.trim(); const m = t.match(/```(?:json)?\s*([\s\S]+?)\s*```/); if (m) t = m[1]; analysis = JSON.parse(t); }
-    catch (e) { throw new Error('拆解 JSON 解析失败：' + e.message); }
+    const __r5 = safeJsonParse(a1);
+        if (!__r.ok) throw new Error('拆解  JSON 解析失败：' + __r.error + ' (原文 ' + __r.rawLen + ' 字)');
+        analysis = __r.data;
     setStep('a2Flow', 'analyze', 'done', '完成');
 
     setStep('a2Flow', 'driving', 'active', '找撬动要素…');
@@ -1034,13 +1090,15 @@ async function runA2() {
       system: '你是爆款二次创作撰稿人。必须差异化，禁止同义词替换。返回严格 JSON。',
       user: '## 账号\n' + JSON.stringify(profile) + '\n\n## 拆解\n' + JSON.stringify(analysis) + '\n\n## 原文本（仅对照，避免雷同）\n"""\n' + txt.slice(0, 2000) + '\n"""\n\n基于 driving_factors 和 reusable_template 生成 3 条差异化二创。每条含 name、change、title、hook_3s、script_30s、hashtags、cta、similarity_self(0-100)。返回 { remixes: [...] }。',
       json: true, tag: 'agent2-remix',
+      maxTokens: 8000,
       onChunk: (d) => appendLive('a2Live', d)
     });
     appendLive('a2Live', '\n\n[' + fmtTime(a2.elapsed) + ' · ' + fmtTokens(a2.usage.total_tokens) + ' tokens]\n');
 
     let remixRes;
-    try { let t = a2.content.trim(); const m = t.match(/```(?:json)?\s*([\s\S]+?)\s*```/); if (m) t = m[1]; remixRes = JSON.parse(t); }
-    catch (e) { throw new Error('二创 JSON 解析失败：' + e.message); }
+    const __r6 = safeJsonParse(a2);
+        if (!__r.ok) throw new Error('二创  JSON 解析失败：' + __r.error + ' (原文 ' + __r.rawLen + ' 字)');
+        remixRes = __r.data;
     setStep('a2Flow', 'remix', 'done', (remixRes.remixes || []).length + ' 条');
 
     // 算相似度
@@ -1065,11 +1123,13 @@ async function runA2() {
         system: '你是二创质量审核员。评估3条二创的差异化程度和可发布性。要严格——如果某条二创和原文太像，或者脚本质量太低，必须判 retry。返回严格 JSON。',
         user: '## 原爆款文本（前300字）\n"""\n' + txt.slice(0, 300) + '\n"""\n\n## driving_factors\n' + JSON.stringify(analysis.driving_factors) + '\n\n## 3条二创\n' + JSON.stringify(rxs.map((r, i) => ({ idx: i, name: r.name, change: r.change, title: r.title, hook_3s: (r.hook_3s || '').slice(0, 60), similarity_final: r.similarity_final })), null, 2) + '\n\n输出 JSON: { overall_score:0-100, verdict:"pass"|"retry", per_remix:[{idx,score,issue}], differentiation_ok:bool, suggestions:[] }。verdict 规则：overall>=70 且 differentiation_ok → pass；否则 → retry。',
         json: true, tag: 'agent2-eval',
+      maxTokens: 3000,
         onChunk: (d) => appendLive('a2Live', d)
       });
       appendLive('a2Live', '\n\n[' + fmtTime(er.elapsed) + ' · ' + fmtTokens(er.usage.total_tokens) + ' tokens]\n');
-      try { let t = er.content.trim(); const m = t.match(/```(?:json)?\s*([\s\S]+?)\s*```/); if (m) t = m[1]; return JSON.parse(t); }
-      catch (e) { return { overall_score: 75, verdict: 'pass', per_remix: [], suggestions: [] }; }
+      const __r7 = safeJsonParse(er);
+        if (__r.ok) return __r.data;
+        return {  overall_score: 75, verdict: 'pass', per_remix: [], suggestions: []  };
     }
 
     eval2Data = await doRemixEval(currentRemixes);
@@ -1084,18 +1144,19 @@ async function runA2() {
         system: '你是爆款二次创作撰稿人。上次生成的二创未通过自检，请根据反馈重新生成。要针对指出的问题做实质改进，不能只是微调。返回严格 JSON。',
         user: '## 账号\n' + JSON.stringify(profile) + '\n\n## 拆解\n' + JSON.stringify(analysis) + '\n\n## 上次自检结果\n总分：' + eval2Data.overall_score + '/100\n各条问题：' + JSON.stringify(eval2Data.per_remix) + '\n建议：' + JSON.stringify(eval2Data.suggestions) + '\n\n重新生成3条差异化二创。每条含 name, change, title, hook_3s, script_30s, hashtags, cta, similarity_self。返回 { remixes: [...] }。',
         json: true, tag: 'agent2-regenerate',
+      maxTokens: 8000,
         onChunk: (d) => appendLive('a2Live', d)
       });
       appendLive('a2Live', '\n\n[' + fmtTime(regen2.elapsed) + ' · ' + fmtTokens(regen2.usage.total_tokens) + ' tokens]\n');
 
-      try {
-        let t = regen2.content.trim(); const m = t.match(/```(?:json)?\s*([\s\S]+?)\s*```/); if (m) t = m[1];
-        const regenRes = JSON.parse(t);
+      const __safe = safeJsonParse(regen2.content);
+      if (__safe.ok) {
+        const regenRes = __safe.data;
         currentRemixes = (regenRes.remixes || []).map(rx => {
           const mySim = Agents.quickSimilarity(txt, (rx.script_30s || '') + (rx.hook_3s || ''));
           return { ...rx, similarity_calc: mySim, similarity_final: Math.max(rx.similarity_self || 0, mySim) };
         });
-      } catch (e) { logLine('a2Log', '重试生成 JSON 解析失败，保留原版', 'err'); }
+      } else { logLine('a2Log', '重试生成 JSON 解析失败，保留原版（已尝试修复：' + __safe.error + '）', 'err'); }
 
       eval2Data = await doRemixEval(currentRemixes);
       logLine('a2Log', '第' + retry2Count + '次重试后自检：' + eval2Data.overall_score + '/100，结论：' + (eval2Data.verdict === 'pass' ? '通过' : (retry2Count < MAX_RETRIES2 ? '继续重试' : '已达上限')), eval2Data.verdict === 'pass' ? 'ok' : 'think');

@@ -84,7 +84,7 @@ ${JSON.stringify(compressed, null, 2)}
 }`;
 
     onProgress && onProgress({ stage: 'scoring', message: '把' + compressed.length + '条热点 + 账号画像 喂给 DeepSeek，让它真实评分…' });
-    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent1-score' });
+    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent1-score', maxTokens: 8000 });
     onProgress && onProgress({ stage: 'scored', message: 'LLM 完成评分，耗时 ' + r.elapsed + 'ms，用 ' + (r.usage.total_tokens || 0) + ' tokens', usage: r.usage, elapsed: r.elapsed });
 
     // 把 idx 映射回原 item
@@ -124,7 +124,7 @@ ${topic._reason ? '（LLM 评分理由：' + topic._reason + '）' : ''}
 只输出 JSON。`;
 
     onProgress && onProgress({ stage: 'generating', message: '把 Top 选题 + 账号风格 喂给 LLM，生成可发布脚本…' });
-    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent1-generate' });
+    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent1-generate', maxTokens: 6000 });
     onProgress && onProgress({ stage: 'generated', message: '脚本生成完成，耗时 ' + r.elapsed + 'ms', usage: r.usage, elapsed: r.elapsed });
     return r.json;
   }
@@ -159,7 +159,7 @@ ${JSON.stringify(preview, null, 2)}
 }`;
 
     onProgress && onProgress({ stage: 'planning', message: 'LLM 正在审视热点、制定评分策略…' });
-    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent1-plan' });
+    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent1-plan', maxTokens: 5000 });
     onProgress && onProgress({ stage: 'planned', message: '策略：' + (r.json.strategy || '').slice(0, 40) + '…，耗时 ' + r.elapsed + 'ms' });
     return r.json;
   }
@@ -192,7 +192,7 @@ ${JSON.stringify(top5.map((t, i) => ({
 }`;
 
     onProgress && onProgress({ stage: 'selecting', message: 'LLM 自主审视 Top5、选择最佳选题…' });
-    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent1-select' });
+    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent1-select', maxTokens: 4000 });
     const idx = Math.min(r.json.selected_idx || 0, top5.length - 1);
     onProgress && onProgress({ stage: 'selected', message: 'LLM 选中：' + (top5[idx]?.title || '').slice(0, 20) + '…（' + (r.json.reasoning || '').slice(0, 30) + '…）' });
     return { topic: top5[idx] || top5[0], reasoning: r.json.reasoning, riskNote: r.json.risk_note, rejectedReason: r.json.rejected_reason };
@@ -234,7 +234,7 @@ ${JSON.stringify(script, null, 2)}
 verdict 规则：overall >= 80 且无严重 issues → "pass"；否则 → "retry"`;
 
     onProgress && onProgress({ stage: 'evaluating', message: 'LLM 自检脚本质量…' });
-    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent1-eval' });
+    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent1-eval', maxTokens: 3000 });
     onProgress && onProgress({ stage: 'evaluated', message: '自检得分：' + r.json.overall + '/100，结论：' + (r.json.verdict === 'pass' ? '通过' : '需重试') });
     return r.json;
   }
@@ -262,7 +262,7 @@ ${JSON.stringify(profile)}
 只输出 JSON。`;
 
     onProgress && onProgress({ stage: 'regenerating', message: '根据自检反馈重新生成（第 ' + (evalResult._retry || 1) + ' 次重试）…' });
-    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent1-regenerate' });
+    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent1-regenerate', maxTokens: 6000 });
     onProgress && onProgress({ stage: 'regenerated', message: '重新生成完成，耗时 ' + r.elapsed + 'ms' });
     return r.json;
   }
@@ -362,7 +362,7 @@ ${viralText.slice(0, 3500)}
 只输出 JSON。`;
 
     onProgress && onProgress({ stage: 'analyzing', message: '把爆款喂给 LLM，做 5 维真实拆解…' });
-    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent2-analyze' });
+    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent2-analyze', maxTokens: 5000 });
     onProgress && onProgress({ stage: 'analyzed', message: '拆解完成，耗时 ' + r.elapsed + 'ms' });
     return r.json;
   }
@@ -407,7 +407,7 @@ ${viralText.slice(0, 2000)}
 }`;
 
     onProgress && onProgress({ stage: 'remixing', message: '基于拆解的 driving_factors 生成 3 条差异化二创…' });
-    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent2-remix' });
+    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent2-remix', maxTokens: 8000 });
     onProgress && onProgress({ stage: 'remixed', message: '二创生成完成，耗时 ' + r.elapsed + 'ms' });
     return r.json;
   }
@@ -461,7 +461,7 @@ ${viralText.slice(0, 300)}
 }`;
 
     onProgress && onProgress({ stage: 'planning', message: 'LLM 正在判断内容类型、制定拆解策略…' });
-    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent2-plan' });
+    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent2-plan', maxTokens: 4000 });
     onProgress && onProgress({ stage: 'planned', message: '策略：' + (r.json.strategy || '').slice(0, 40) + '…，耗时 ' + r.elapsed + 'ms' });
     return r.json;
   }
@@ -505,7 +505,7 @@ ${JSON.stringify(remixes.map((r, i) => ({
 verdict 规则：overall >= 70 且 differentiation_ok → "pass"；否则 → "retry"`;
 
     onProgress && onProgress({ stage: 'evaluating', message: 'LLM 自检二创质量…' });
-    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent2-eval' });
+    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent2-eval', maxTokens: 3000 });
     onProgress && onProgress({ stage: 'evaluated', message: '二创自检得分：' + r.json.overall_score + '/100，结论：' + (r.json.verdict === 'pass' ? '通过' : '需重试') });
     return r.json;
   }
@@ -537,7 +537,7 @@ ${viralText.slice(0, 1500)}
 返回 { remixes: [...] }。`;
 
     onProgress && onProgress({ stage: 'regenerating', message: '根据自检反馈重新生成二创…' });
-    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent2-regenerate' });
+    const r = await LLM.callJSON({ system: sys, user: usr, tag: 'agent2-regenerate', maxTokens: 8000 });
     onProgress && onProgress({ stage: 'regenerated', message: '重新生成完成，耗时 ' + r.elapsed + 'ms' });
     return r.json;
   }

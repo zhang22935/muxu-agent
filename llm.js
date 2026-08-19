@@ -35,9 +35,12 @@
       baseURL: 'https://api.deepseek.com',
       model: 'deepseek-chat',
       temperature: 0.7,
-      maxTokens: 2000
+      maxTokens: 4096           // 默认提到 4096，覆盖常见 Agent 步骤需要
     };
   }
+
+  // 单次 LLM 调用的最大输出 token 上限（防 8K/4K 限制被卡住的硬上限）
+  const HARD_MAX_TOKENS = 16000;
 
   function saveConfig(cfg) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
@@ -91,7 +94,8 @@
       model: cfg.model || 'deepseek-chat',
       messages,
       temperature: opts.temperature ?? cfg.temperature ?? 0.7,
-      max_tokens: opts.maxTokens ?? cfg.maxTokens ?? 2000,
+      // 把 maxTokens 上限拉到 HARD_MAX_TOKENS，避免一次输出 30 条 JSON 被截断
+      max_tokens: Math.min(opts.maxTokens ?? cfg.maxTokens ?? 4096, HARD_MAX_TOKENS),
       stream: !!opts.stream
     };
     // DeepSeek 支持 JSON mode
@@ -208,6 +212,36 @@
     throw lastErr;
   }
 
+  // 尝试修复被 max_tokens 截断的 JSON（关闭未闭合的字符串/对象/数组）
+  function repairTruncatedJSON(txt) {
+    // 1. 去掉尾部未完成（缺引号结束、刚开 quote 等）的不完整字符串
+    // 从尾部往前找最稳定的关闭点 }, ]], "
+    let s = txt.trim();
+    // 去掉行内注释
+    s = s.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    // 平衡大括号/中括号：补齐缺失的闭合
+    let braces = 0, brackets = 0, inStr = false, esc = false;
+    for (let i = 0; i < s.length; i++) {
+      const c = s[i];
+      if (esc) { esc = false; continue; }
+      if (c === '\\') { esc = true; continue; }
+      if (c === '"') { inStr = !inStr; continue; }
+      if (inStr) continue;
+      if (c === '{') braces++;
+      else if (c === '}') braces--;
+      else if (c === '[') brackets++;
+      else if (c === ']') brackets--;
+    }
+    // 如果当前在字符串里关闭，先关字符串
+    if (inStr) s += '"';
+    // 补齐未闭合的对象/数组
+    // 先去掉尾部 `,` `,]` `,}` 等悬挂分隔符
+    s = s.replace(/,\s*$/, '');
+    while (brackets > 0) { s += ']'; brackets--; }
+    while (braces > 0) { s += '}'; braces--; }
+    return s;
+  }
+
   // 便捷：要求 JSON 输出
   async function callJSON(opts) {
     const user = opts.user + (opts.user.includes('```') ? '' : '\n\n请只输出严格 JSON，不要任何解释。');
@@ -217,9 +251,20 @@
       let txt = r.content.trim();
       const m = txt.match(/```(?:json)?\s*([\s\S]+?)\s*```/);
       if (m) txt = m[1];
-      return { ...r, json: JSON.parse(txt) };
+      const parsed = JSON.parse(txt);
+      return { ...r, json: parsed, _repaired: false };
     } catch (e) {
-      throw new Error('JSON 解析失败：' + e.message + ' | 原文：' + r.content.slice(0, 200));
+      // 第一次解析失败 → 尝试修复被 max_tokens 截断的 JSON
+      try {
+        let txt = r.content.trim();
+        const m = txt.match(/```(?:json)?\s*([\s\S]+?)\s*```/);
+        if (m) txt = m[1];
+        const repaired = repairTruncatedJSON(txt);
+        const parsed = JSON.parse(repaired);
+        return { ...r, json: parsed, _repaired: true };
+      } catch (e2) {
+        throw new Error('JSON 解析失败：' + e.message + ' | 截断恢复也失败：' + e2.message + ' | 原文前 200 字：' + r.content.slice(0, 200) + ' | 原文长度：' + r.content.length);
+      }
     }
   }
 
