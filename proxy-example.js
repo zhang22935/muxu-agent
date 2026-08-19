@@ -150,35 +150,42 @@ const server = http.createServer(async (req, res) => {
   }
 
   const u = new URL(req.url, 'http://localhost');
-  const target = u.searchParams.get('url');
+  // 支持两种格式：?url=X 和 ?url=&url=X（用户重复填错的情况）— 取第一个非空
+  const urlList = u.searchParams.getAll('url').filter(Boolean);
+  const target = urlList[0];
+
+  // CORS 头：所有响应都加，避免任何 4xx/5xx 也被浏览器拦截
+  const CORS = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Expose-Headers': '*'
+  };
 
   // 健康检查
   if (req.url === '/' || req.url === '/health') {
-    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', ...CORS });
     return res.end('苜蓿爆款 Agent 代理已启动\n用法：GET /?url=https://weibo.com/ajax/side/hotSearch\n');
   }
 
   if (!target) {
-    res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
-    return res.end('Missing ?url= parameter\n');
+    res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8', ...CORS });
+    return res.end('Missing ?url= parameter (eg: /?url=https://weibo.com/ajax/side/hotSearch)\n');
   }
 
   if (!isAllowed(target)) {
-    res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8', ...CORS });
     return res.end('Domain not allowed: ' + new URL(target).hostname + '\n允许列表：' + ALLOWED.join(', '));
   }
 
   try {
     const up = await fetchUpstream(target);
     res.writeHead(up.status, {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Expose-Headers': '*',
+      ...CORS,
       'Content-Type': up.headers['content-type'] || 'application/octet-stream'
     });
     res.end(up.body);
   } catch (e) {
     res.writeHead(502, {
-      'Access-Control-Allow-Origin': '*',
+      ...CORS,
       'Content-Type': 'text/plain; charset=utf-8'
     });
     res.end('Upstream fetch failed: ' + e.message);

@@ -38,12 +38,16 @@
 
   // ============== 抓取核心 ==============
   async function fetchViaProxy(targetUrl, proxyBase) {
-    // 通用代理调用：假设代理支持 ?url= 形式
-    // 自动剥离用户可能误填的尾缀 ?url= 或 &url=
-    proxyBase = proxyBase.replace(/[?&]url=*$/, '');
+    // 自动剥离用户误填的 [?&]url= 尾缀（不区分是否带值）
+    proxyBase = proxyBase.replace(/[?&]url=[^&]*$/, '');
     const sep = proxyBase.includes('?') ? '&' : '?';
     const url = proxyBase + sep + 'url=' + encodeURIComponent(targetUrl);
-    const r = await fetch(url, { method: 'GET' });
+    let r = await fetch(url, { method: 'GET' });
+    // 代理 400 时（说明 url 参数被吃了/重复），自动重试一次：去掉参数后用纯 base
+    if (r.status === 400) {
+      const cleanUrl = proxyBase + '?url=' + encodeURIComponent(targetUrl);
+      r = await fetch(cleanUrl, { method: 'GET' });
+    }
     if (!r.ok) throw new Error('proxy ' + r.status);
     const ct = r.headers.get('content-type') || '';
     if (ct.includes('application/json')) return await r.json();
