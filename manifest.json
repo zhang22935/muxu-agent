@@ -1,6 +1,6 @@
 {
-  "name": "苜蓿爆款 Agent 工作台",
-  "short_name": "爆款Agent",
+  "name": "工作台",
+  "short_name": "工作台",
   "description": "AI Agent 实战 Demo · 每日热点→爆款 + 爆款拆解→二次创作",
   "start_url": "./index.html",
   "display": "standalone",
