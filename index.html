@@ -2,10 +2,8 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#e8590c">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.json">
 <title>苜蓿爆款 Agent 工作台 · 真·可用</title>
 <style>
@@ -20,7 +18,7 @@
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html{font-size:15px;}
-  body{font-family:"MiSans","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;padding-bottom:calc(72px + var(--safe-b));}
+  body{font-family:"MiSans","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;}
   button{font-family:inherit;}
 
   /* App Bar */
@@ -36,13 +34,13 @@
   .greeting{margin:10px 2px 0;font-size:12.5px;line-height:1.7;background:rgba(255,255,255,.16);border-radius:12px;padding:9px 12px;}
   .greeting .warn{background:rgba(255,235,150,.92);color:#7d4a00;padding:6px 8px;border-radius:8px;margin-top:4px;}
 
-  main{padding:14px 12px 20px;max-width:640px;margin:0 auto;}
+  main{padding:22px 24px 48px;max-width:1200px;margin:0 auto;}
   .panel{display:none;animation:fade .22s ease;}
   .panel.active{display:block;}
   @keyframes fade{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
 
-  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:12px;}
-  .card h2{font-size:15.5px;margin-bottom:12px;display:flex;align-items:center;gap:7px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:14px;}
+  .card h2{font-size:16px;margin-bottom:13px;display:flex;align-items:center;gap:7px;}
   .muted{color:var(--sub);font-size:11.5px;font-weight:400;}
   .row-tags{display:flex;flex-wrap:wrap;gap:5px;}
   .badge{font-size:10.5px;padding:3px 10px;border-radius:99px;flex-shrink:0;}
@@ -104,12 +102,12 @@
   .copy-btn.ok{background:var(--accent-2);color:#fff;border-color:var(--accent-2);}
 
   /* Real-time LLM output */
-  .live-out{background:#1a1814;color:#e8e0d2;border-radius:12px;padding:14px;margin:10px 0;font-family:ui-monospace,Consolas,monospace;font-size:12.5px;line-height:1.7;max-height:280px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;}
+  .live-out{background:#1a1814;color:#e8e0d2;border-radius:12px;padding:16px;margin:10px 0;font-family:ui-monospace,Consolas,monospace;font-size:13px;line-height:1.7;max-height:560px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;}
   .live-out .think{color:#b8a684;font-style:italic;}
   .live-out .ts{color:#7a7062;font-size:10.5px;}
 
   /* Progress log (real LLM trace) */
-  .log{max-height:240px;overflow-y:auto;background:#0f0e0b;color:#d8cfb8;border-radius:10px;padding:10px 12px;font-family:ui-monospace,Consolas,monospace;font-size:11.5px;line-height:1.6;}
+  .log{max-height:560px;overflow-y:auto;background:#0f0e0b;color:#d8cfb8;border-radius:10px;padding:12px 14px;font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:1.6;}
   .log .line{margin-bottom:4px;word-break:break-all;}
   .log .line .t{color:#7a7062;margin-right:6px;}
   .log .line.ok{color:#9ed49e;}
@@ -118,9 +116,9 @@
   .log .line.info{color:#9ec3ff;}
 
   /* Modal */
-  .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:flex-end;justify-content:center;}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center;padding:24px;}
   .modal.open{display:flex;animation:fade .2s ease;}
-  .modal .sheet{background:var(--card);width:100%;max-width:640px;border-radius:20px 20px 0 0;padding:18px 16px calc(20px + var(--safe-b));max-height:88vh;overflow-y:auto;}
+  .modal .sheet{background:var(--card);width:100%;max-width:680px;border-radius:20px;padding:22px 22px 24px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.3);}
   .modal h3{font-size:16px;margin-bottom:14px;}
   .field{margin-bottom:12px;}
   .field label{display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#5a4a3a;}
@@ -130,11 +128,12 @@
   .modal .row-btns{display:flex;gap:8px;margin-top:14px;}
   .modal .row-btns .btn{flex:1;}
 
-  /* Tab Bar */
-  .tabbar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 0 calc(8px + var(--safe-b));z-index:100;}
-  .tabbar .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px;border:none;background:transparent;color:var(--sub);font-size:10.5px;cursor:pointer;}
-  .tabbar .tab .ti{font-size:19px;}
-  .tabbar .tab.active{color:var(--accent);}
+  /* Top Nav (moved from bottom tabbar) */
+  .tabnav{display:flex;gap:6px;margin-top:13px;flex-wrap:wrap;}
+  .tabnav .tab{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:8px 18px;border-radius:99px;background:rgba(255,255,255,.16);color:#fff;font-size:13.5px;border:none;cursor:pointer;transition:.15s;font-family:inherit;}
+  .tabnav .tab .ti{font-size:15px;}
+  .tabnav .tab:hover{background:rgba(255,255,255,.28);}
+  .tabnav .tab.active{background:#fff;color:var(--accent);font-weight:700;box-shadow:0 3px 10px rgba(0,0,0,.12);}
 
   /* Utility */
   .center{text-align:center;}
@@ -155,6 +154,37 @@
   /* Toast */
   .toast{position:fixed;left:50%;top:80px;transform:translateX(-50%);background:rgba(20,20,20,.92);color:#fff;padding:9px 18px;border-radius:99px;font-size:13px;z-index:300;opacity:0;transition:.25s;pointer-events:none;}
   .toast.show{opacity:1;}
+
+  /* ===== 桌面双栏布局 ===== */
+  .work-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;}
+  .work-col{display:flex;flex-direction:column;min-width:0;}
+  .work-col .card{margin-bottom:14px;}
+  .work-col.out .card{position:sticky;top:200px;}
+
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .grid-2 .card{margin-bottom:0;}
+
+  .lib-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+
+  /* 评分列表紧凑化（桌面） */
+  .topic{padding:14px 16px;}
+
+  /* ===== 响应式回退（窄屏/手机） ===== */
+  @media (max-width: 880px) {
+    main{padding:14px 12px 24px;}
+    .work-grid{grid-template-columns:1fr;gap:0;}
+    .work-col.out .card{position:static;}
+    .grid-2{grid-template-columns:1fr;gap:0;}
+    .grid-2 .card{margin-bottom:12px;}
+    .lib-grid{grid-template-columns:1fr;}
+    .card{padding:15px 15px;}
+  }
+  @media (max-width: 560px) {
+    .appbar h1{font-size:16px;}
+    .tabnav{gap:4px;margin-top:10px;}
+    .tabnav .tab{padding:7px 12px;font-size:12.5px;}
+    .kpi-row{gap:6px;}
+  }
 </style>
 </head>
 <body>
@@ -173,6 +203,12 @@
       <button class="iconbtn" id="btnSettings" title="设置">⚙️</button>
     </div>
   </div>
+  <nav class="tabnav">
+    <button class="tab active" data-tab="0" onclick="goTab(0)"><span class="ti">🏠</span><span>首页</span></button>
+    <button class="tab" data-tab="1" onclick="goTab(1)"><span class="ti">🟧</span><span>热点→爆款</span></button>
+    <button class="tab" data-tab="2" onclick="goTab(2)"><span class="ti">🟪</span><span>拆解→二创</span></button>
+    <button class="tab" data-tab="3" onclick="goTab(3)"><span class="ti">📚</span><span>资产库</span></button>
+  </nav>
   <div class="greeting" id="greeting">
     欢迎回来～先点右上角 <b>⚙️ 设置</b> 填入 DeepSeek API Key（必须），再选是否要配代理抓真实热点。
   </div>
@@ -193,6 +229,7 @@
         <div class="kpi"><div class="v" id="kpiTrace">—</div><div class="l">LLM 调用</div></div>
       </div>
     </div>
+    <div class="grid-2">
     <div class="card">
       <h2>🟧 Agent 1 · 每日热点 → 爆款脚本 <span class="badge hot">题2</span></h2>
       <p style="font-size:12.5px;color:#5a4a3a;line-height:1.7;">
@@ -208,6 +245,7 @@
         找出真正撬动流量的底层机制 → 生成 <b>≥3 条差异化二创</b>，每条自评与原文相似度。
       </p>
       <button class="btn block ghost" style="margin-top:12px;" onclick="goTab(2)">开始跑 Agent 2 →</button>
+    </div>
     </div>
     <div class="card">
       <h2>🛠 真·可用的关键</h2>
@@ -234,30 +272,36 @@
       <button class="btn block" id="a1Run" onclick="runA1()">🚀 一键跑 Agent 1</button>
     </div>
 
-    <div class="card" id="a1SrcCard" style="display:none;">
-      <h2>📡 多源抓取状态 <span class="muted">真实</span></h2>
-      <div id="a1Sources"></div>
-      <div class="muted center" id="a1ProxyInfo" style="margin-top:6px;"></div>
-    </div>
+    <div class="work-grid">
+      <div class="work-col">
+        <div class="card" id="a1SrcCard" style="display:none;">
+          <h2>📡 多源抓取状态 <span class="muted">真实</span></h2>
+          <div id="a1Sources"></div>
+          <div class="muted center" id="a1ProxyInfo" style="margin-top:6px;"></div>
+        </div>
 
-    <div class="card" id="a1LiveCard" style="display:none;">
-      <h2>🧠 LLM 实时输出 <span class="muted">真实请求</span></h2>
-      <div class="live-out" id="a1Live"></div>
-    </div>
+        <div class="card" id="a1TopicsCard" style="display:none;">
+          <h2>🧮 评分结果 <span class="muted">DeepSeek 4 维真实评分</span></h2>
+          <div id="a1Topics"></div>
+        </div>
 
-    <div class="card" id="a1LogCard" style="display:none;">
-      <h2>📋 完整 trace <span class="muted">每一步都记</span></h2>
-      <div class="log" id="a1Log"></div>
-    </div>
+        <div class="card" id="a1ScriptCard" style="display:none;">
+          <h2>✍️ 生成的爆款脚本 <span class="muted">可发布</span></h2>
+          <div id="a1Script"></div>
+        </div>
+      </div>
 
-    <div class="card" id="a1TopicsCard" style="display:none;">
-      <h2>🧮 评分结果 <span class="muted">DeepSeek 4 维真实评分</span></h2>
-      <div id="a1Topics"></div>
-    </div>
+      <div class="work-col out">
+        <div class="card" id="a1LiveCard" style="display:none;">
+          <h2>🧠 LLM 实时输出 <span class="muted">真实请求</span></h2>
+          <div class="live-out" id="a1Live"></div>
+        </div>
 
-    <div class="card" id="a1ScriptCard" style="display:none;">
-      <h2>✍️ 生成的爆款脚本 <span class="muted">可发布</span></h2>
-      <div id="a1Script"></div>
+        <div class="card" id="a1LogCard" style="display:none;">
+          <h2>📋 完整 trace <span class="muted">每一步都记</span></h2>
+          <div class="log" id="a1Log"></div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -289,38 +333,46 @@
       <button class="btn block" id="a2Run" onclick="runA2()">🚀 拆解 + 生成二创</button>
     </div>
 
-    <div class="card" id="a2LiveCard" style="display:none;">
-      <h2>🧠 LLM 实时输出</h2>
-      <div class="live-out" id="a2Live"></div>
-    </div>
+    <div class="work-grid">
+      <div class="work-col">
+        <div class="card" id="a2AnalysisCard" style="display:none;">
+          <h2>🔬 5 维拆解</h2>
+          <div id="a2Analysis"></div>
+        </div>
 
-    <div class="card" id="a2AnalysisCard" style="display:none;">
-      <h2>🔬 5 维拆解</h2>
-      <div id="a2Analysis"></div>
-    </div>
+        <div class="card" id="a2RemixCard" style="display:none;">
+          <h2>🪄 差异化二创 <span class="muted">每条都标注换的是什么、相似度</span></h2>
+          <div id="a2Remixes"></div>
+        </div>
+      </div>
 
-    <div class="card" id="a2RemixCard" style="display:none;">
-      <h2>🪄 差异化二创 <span class="muted">每条都标注换的是什么、相似度</span></h2>
-      <div id="a2Remixes"></div>
+      <div class="work-col out">
+        <div class="card" id="a2LiveCard" style="display:none;">
+          <h2>🧠 LLM 实时输出</h2>
+          <div class="live-out" id="a2Live"></div>
+        </div>
+      </div>
     </div>
   </section>
 
   <!-- ========== Tab 3: 资产库 ========== -->
   <section class="panel" id="panel-lib">
-    <div class="card">
-      <h2>📚 内容资产库 <span class="muted" id="libCount">0 条</span></h2>
-      <div class="row-tags" style="margin-bottom:10px;">
-        <button class="btn sm ghost" onclick="exportLib()">📥 导出全部 Markdown</button>
-        <button class="btn sm" style="background:var(--red);" onclick="clearLib()">🗑 清空</button>
+    <div class="lib-grid">
+      <div class="card">
+        <h2>📚 内容资产库 <span class="muted" id="libCount">0 条</span></h2>
+        <div class="row-tags" style="margin-bottom:10px;">
+          <button class="btn sm ghost" onclick="exportLib()">📥 导出全部 Markdown</button>
+          <button class="btn sm" style="background:var(--red);" onclick="clearLib()">🗑 清空</button>
+        </div>
+        <div id="libList"></div>
       </div>
-      <div id="libList"></div>
-    </div>
-    <div class="card">
-      <h2>📊 发布追踪表 <span class="muted" id="trackCount">0 条</span></h2>
-      <div class="row-tags" style="margin-bottom:10px;">
-        <button class="btn sm ghost" onclick="exportTrack()">📥 导出追踪</button>
+      <div class="card">
+        <h2>📊 发布追踪表 <span class="muted" id="trackCount">0 条</span></h2>
+        <div class="row-tags" style="margin-bottom:10px;">
+          <button class="btn sm ghost" onclick="exportTrack()">📥 导出追踪</button>
+        </div>
+        <div id="trackList"></div>
       </div>
-      <div id="trackList"></div>
     </div>
   </section>
 </main>
@@ -398,13 +450,7 @@
   </div>
 </div>
 
-<!-- ========== Tab Bar ========== -->
-<nav class="tabbar">
-  <button class="tab active" data-tab="0" onclick="goTab(0)"><span class="ti">🏠</span><span>首页</span></button>
-  <button class="tab" data-tab="1" onclick="goTab(1)"><span class="ti">🟧</span><span>热点→爆款</span></button>
-  <button class="tab" data-tab="2" onclick="goTab(2)"><span class="ti">🟪</span><span>拆解→二创</span></button>
-  <button class="tab" data-tab="3" onclick="goTab(3)"><span class="ti">📚</span><span>资产库</span></button>
-</nav>
+<!-- ========== Tab Bar (moved into appbar as top nav) ========== -->
 
 <div class="toast" id="toast"></div>
 
