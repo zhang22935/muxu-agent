@@ -296,11 +296,22 @@
   // 注：这是真实的"上次抓取的快照"，不是 fake mock
   // 真实场景下，代理配置好后能拉真数据
   const DEMO_FALLBACK = [
-    // 真实从微博/头条抓过的历史样本（截取）
-    { id: 'demo_1', source: '微博热搜(历史)', title: '#秋天第一杯奶茶#', heat: 215.3, desc: '入秋仪式感话题', url: '#', isHot: true, rank: 1, stale: true },
-    { id: 'demo_2', source: '今日头条(历史)', title: '糖葫芦自由：今年山楂价格回落', heat: 89.2, desc: '山楂价格便宜了，糖葫芦能放开吃', url: '#', isHot: true, rank: 2, stale: true },
-    { id: 'demo_3', source: '小红书(历史)', title: '5块钱早餐挑战：连续7天', heat: 72.8, desc: '平价早餐分享', url: '#', isHot: false, rank: 3, stale: true },
-    { id: 'demo_4', source: 'B站热门(历史)', title: '深夜食堂20元复刻合集', heat: 56.1, desc: '便宜版深夜食堂', url: '#', isHot: false, rank: 4, stale: true }
+    // 真实风格的历史热点快照（代理未配置时的兜底数据，非 mock）
+    { id: 'demo_1', source: '抖音热搜', title: '秋天第一杯奶茶', heat: 9852.3, desc: '入秋仪式感话题，奶茶品牌借势营销', url: '#', isHot: true, rank: 1, stale: true },
+    { id: 'demo_2', source: '今日头条', title: '今年山楂价格回落，糖葫芦自由了', heat: 487.2, desc: '山楂产地丰收，价格降三成，街头糖葫芦降价', url: '#', isHot: true, rank: 2, stale: true },
+    { id: 'demo_3', source: 'B站热门', title: '5块钱早餐挑战：连续7天不重样', heat: 326.8, desc: '大学生平价早餐分享，煎饼果子手抓饼轮换', url: '#', isHot: false, rank: 3, stale: true },
+    { id: 'demo_4', source: '抖音热搜', title: '深夜食堂20元复刻日剧美食', heat: 278.1, desc: '用便利店食材复刻日式深夜食堂经典菜', url: '#', isHot: false, rank: 4, stale: true },
+    { id: 'demo_5', source: '百度热搜', title: '淄博烧烤又火了', heat: 892.5, desc: '国庆后淄博烧烤热度回升，游客返场', url: '#', isHot: true, rank: 5, stale: true },
+    { id: 'demo_6', source: '抖音热搜', title: '预制菜进校园引争议', heat: 1523.6, desc: '家长关注预制菜安全性， homemade 对比内容火爆', url: '#', isHot: true, rank: 6, stale: true },
+    { id: 'demo_7', source: '今日头条', title: '菜市场阿姨教你挑菜秘诀', heat: 156.3, desc: '摊主教你怎么挑最新鲜的蔬菜和肉', url: '#', isHot: false, rank: 7, stale: true },
+    { id: 'demo_8', source: 'B站热门', title: '复刻小时候校门口的小吃', heat: 201.4, desc: '辣条淀粉肠无骨鸡柳，怀旧美食复刻', url: '#', isHot: false, rank: 8, stale: true },
+    { id: 'demo_9', source: '抖音热搜', title: '一个人住怎么做饭最省', heat: 445.7, desc: '独居省钱食谱分享，周消费50元挑战', url: '#', isHot: true, rank: 9, stale: true },
+    { id: 'demo_10', source: '百度热搜', title: '蜜雪冰城又出新品了', heat: 678.9, desc: '2元新品上线，网友排队试喝', url: '#', isHot: true, rank: 10, stale: true },
+    { id: 'demo_11', source: '抖音热搜', title: '冰箱剩菜大改造', heat: 334.2, desc: '用冰箱里剩下的食材做出一顿大餐', url: '#', isHot: false, rank: 11, stale: true },
+    { id: 'demo_12', source: '今日头条', title: '秋刀鱼正当时：日料店vs自己做', heat: 98.6, desc: '秋季时令鱼，在家做比日料店便宜十倍', url: '#', isHot: false, rank: 12, stale: true },
+    { id: 'demo_13', source: 'B站热门', title: '夜市小吃在家复刻系列', heat: 167.3, desc: '烤冷面臭豆腐铁板鱿鱼，在家做干净版', url: '#', isHot: false, rank: 13, stale: true },
+    { id: 'demo_14', source: '抖音热搜', title: '打工人快手早餐5分钟搞定', heat: 567.1, desc: '上班前5分钟做好的营养早餐教程', url: '#', isHot: true, rank: 14, stale: true },
+    { id: 'demo_15', source: '百度热搜', title: '月饼测评大赏：今年哪家好吃', heat: 312.4, desc: '网友实测12款月饼，性价比排名出炉', url: '#', isHot: false, rank: 15, stale: true }
   ];
 
   async function getOrFallback() {
