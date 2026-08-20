@@ -1604,19 +1604,31 @@ function renderCandidates() {
   const rejected = arr.filter(c => c.status === 'rejected').length;
   const acceptRate = fb.available ? fb.acceptRate + '%' : '—';
 
-  $('kpiCandTotal').textContent = total;
-  $('kpiCandPending').textContent = pending;
-  $('kpiCandAdopted').textContent = adopted;
-  $('kpiCandRejected').textContent = rejected;
-  $('kpiCandAccept').innerHTML = '<b>采纳率：</b>' + acceptRate + (fb.available ? '（历史 ' + fb.total + ' 条决策）' : '（尚无采纳/驳回记录，下一轮会自动启用反馈）');
+  // 防御性 null 检查：任何一个 KPI 元素缺失都不能让整个 renderCandidates 崩
+  const setText = (id, val) => { const el = $(id); if (el) el.textContent = val; else console.warn('[候选池] 缺少元素 #' + id); };
+  setText('kpiCandTotal', total);
+  setText('kpiCandPending', pending);
+  setText('kpiCandAdopted', adopted);
+  setText('kpiCandRejected', rejected);
+  const acceptEl = $('candKpiAccept');
+  if (acceptEl) {
+    acceptEl.innerHTML = '<b style="color:#7d6608;">采纳率：</b>' + escapeHtml(acceptRate) +
+      (fb.available ? '<span style="color:#8a8a8a;">（历史 ' + fb.total + ' 条决策）</span>' : '<span style="color:#8a8a8a;">（尚无采纳/驳回记录，下一轮会自动启用反馈）</span>');
+  } else {
+    console.warn('[候选池] 缺少元素 #candKpiAccept（页面无采纳率显示，但不影响其他功能）');
+  }
 
   const fbBox = $('candFeedback');
-  if (fb.available) {
-    fbBox.style.display = 'block';
-    fbBox.innerHTML = '<div style="font-size:13px;font-weight:700;color:#7d6608;margin-bottom:6px;">🧠 反馈优化（已自动注入下一次 LLM 规划上下文）</div>' +
-      '<div style="white-space:pre-wrap;font-family:ui-monospace,Consolas,monospace;font-size:11.5px;line-height:1.7;color:#5a4a3a;">' + escapeHtml(fb.message) + '</div>';
+  if (fbBox) {
+    if (fb.available) {
+      fbBox.style.display = 'block';
+      fbBox.innerHTML = '<div style="font-size:13px;font-weight:700;color:#7d6608;margin-bottom:6px;">🧠 反馈优化（已自动注入下一次 LLM 规划上下文）</div>' +
+        '<div style="white-space:pre-wrap;font-family:ui-monospace,Consolas,monospace;font-size:11.5px;line-height:1.7;color:#5a4a3a;">' + escapeHtml(fb.message) + '</div>';
+    } else {
+      fbBox.style.display = 'none';
+    }
   } else {
-    fbBox.style.display = 'none';
+    console.warn('[候选池] 缺少元素 #candFeedback');
   }
 
   let rows = arr;
