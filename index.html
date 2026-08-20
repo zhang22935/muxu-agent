@@ -471,7 +471,8 @@
         <button class="btn sm ghost" onclick="exportCandidates()">📥 导出 Markdown</button>
         <button class="btn sm" style="background:var(--red);" onclick="clearCandPool()">🗑 清空待审</button>
       </div>
-      <div id="candList"></div>
+      <div id="candList" style="min-height:40px;"></div>
+      <div id="candDebug" style="margin-top:10px;padding:8px 10px;background:#f5f5f5;border-radius:8px;font-size:10.5px;color:#888;font-family:ui-monospace,monospace;line-height:1.6;"></div>
     </div>
   </section>
 </main>
@@ -1170,9 +1171,50 @@ async function runA1() {
   }
 }
 
+// 把 LLM 返回的"非字符串"内容（对象 / 数组）规范化为可读字符串
+// 场景：LLM 经常把 script_30s 返回成 [{time, visual, audio}] 数组、
+//      把 expected_metrics 返回成 {views, engagement} 对象，
+//      直接拼进 DOM 会显示 [object Object]
+function normalizeContent(content) {
+  if (content == null) return '';
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return content.map((item, i) => {
+      if (item == null) return '';
+      if (typeof item === 'string') return item;
+      if (typeof item === 'object') {
+        // 分镜场景：time/shot/timeframe + visual/screen + audio/voiceover/narration 等
+        const keys = Object.keys(item);
+        const timeKey = keys.find(k => /^(time|shot|timeframe|sec|second|t|时间|分镜)/i.test(k));
+        const visualKey = keys.find(k => /^(visual|screen|画面|视觉|scene)/i.test(k));
+        const audioKey = keys.find(k => /^(audio|voice|voiceover|narration|配音|旁白|音)/i.test(k));
+        const captionKey = keys.find(k => /^(caption|text|subtitle|字幕|文字)/i.test(k));
+        if (timeKey || visualKey || audioKey) {
+          const parts = [];
+          if (timeKey) parts.push('【' + item[timeKey] + '】');
+          if (visualKey) parts.push('画面：' + item[visualKey]);
+          if (audioKey) parts.push('配音：' + item[audioKey]);
+          if (captionKey) parts.push('字幕：' + item[captionKey]);
+          return parts.join('  ');
+        }
+        // 通用对象数组：每项按 key: value 平铺
+        return keys.map(k => k + '：' + item[k]).join('  ·  ');
+      }
+      return String(item);
+    }).filter(Boolean).join('\n');
+  }
+  if (typeof content === 'object') {
+    // 单个对象（预期表现等）按 key: value 多行
+    return Object.entries(content).map(([k, v]) => k + '：' + v).join('\n');
+  }
+  return String(content);
+}
+
 function renderDraft(label, content, copyKey) {
   if (!content) return '';
-  return '<div class="draft"><div class="label"><span>' + label + '</span>' + copyBtn(copyKey, typeof content === 'string' ? content : JSON.stringify(content, null, 2)) + '</div><div class="content">' + (typeof content === 'string' ? escapeHtml(content).replace(/\n/g, '<br>') : content) + '</div></div>';
+  const text = normalizeContent(content);
+  if (!text) return '';
+  return '<div class="draft"><div class="label"><span>' + label + '</span>' + copyBtn(copyKey, text) + '</div><div class="content">' + escapeHtml(text).replace(/\n/g, '<br>') + '</div></div>';
 }
 
 function copyBtn(key, text) {
@@ -1181,10 +1223,14 @@ function copyBtn(key, text) {
 
 function saveScriptToLib(jsonStr) {
   const d = JSON.parse(jsonStr);
+  // 同样归一化：避免 LLM 返回数组/对象的字段被拼成 [object Object]
+  const hook = normalizeContent(d.hook);
+  const script = normalizeContent(d.script);
+  const cta = normalizeContent(d.cta);
   Agents.addToLib({
     type: 'script',
     title: d.title,
-    content: '【选题】' + d.topic + ' (' + d.source + ')\n【钩子】' + d.hook + '\n\n【脚本】\n' + d.script + '\n\n【CTA】' + d.cta,
+    content: '【选题】' + d.topic + ' (' + d.source + ')\n【钩子】' + hook + '\n\n【脚本】\n' + script + '\n\n【CTA】' + cta,
     tags: Array.isArray(d.hashtags) ? d.hashtags : (typeof d.hashtags === 'string' ? d.hashtags.split(/[,,#\s]+/).filter(Boolean) : [])
   });
   toast('已存到内容资产库');
@@ -1308,7 +1354,8 @@ async function runA2() {
     const remixes = (remixRes.remixes || []).map(rx => {
       let maxSim = 0;
       for (const vt of viralTexts) {
-        const mySim = Agents.quickSimilarity(vt, (rx.script_30s || '') + (rx.hook_3s || ''));
+        // 归一化：避免 LLM 返回数组/对象时 similarity 被计算在 "[object Object]" 上
+        const mySim = Agents.quickSimilarity(vt, normalizeContent(rx.script_30s) + normalizeContent(rx.hook_3s));
         if (mySim > maxSim) maxSim = mySim;
       }
       return { ...rx, similarity_calc: maxSim, similarity_final: Math.max(rx.similarity_self || 0, maxSim) };
@@ -1361,7 +1408,8 @@ async function runA2() {
         currentRemixes = (regenRes.remixes || []).map(rx => {
           let maxSim = 0;
           for (const vt of viralTexts) {
-            const mySim = Agents.quickSimilarity(vt, (rx.script_30s || '') + (rx.hook_3s || ''));
+            // 归一化：避免 LLM 返回数组/对象时 similarity 被计算在 "[object Object]" 上
+            const mySim = Agents.quickSimilarity(vt, normalizeContent(rx.script_30s) + normalizeContent(rx.hook_3s));
             if (mySim > maxSim) maxSim = mySim;
           }
           return { ...rx, similarity_calc: maxSim, similarity_final: Math.max(rx.similarity_self || 0, maxSim) };
@@ -1443,10 +1491,11 @@ async function runA2() {
 
 function saveRemixToLib(jsonStr) {
   const rx = JSON.parse(jsonStr);
+  // 同样归一化 hook/script/cta：避免 [object Object]
   Agents.addToLib({
     type: 'remix',
-    title: rx.name + ' · ' + (rx.title || '').slice(0, 30),
-    content: '【差异化】' + rx.change + '\n\n【标题】' + rx.title + '\n\n【钩子】' + rx.hook_3s + '\n\n【脚本】\n' + rx.script_30s + '\n\n【CTA】' + rx.cta,
+    title: rx.name + ' · ' + (Array.isArray(rx.title) ? rx.title[0] : (rx.title || '')).slice(0, 30),
+    content: '【差异化】' + normalizeContent(rx.change) + '\n\n【标题】' + normalizeContent(rx.title) + '\n\n【钩子】' + normalizeContent(rx.hook_3s) + '\n\n【脚本】\n' + normalizeContent(rx.script_30s) + '\n\n【CTA】' + normalizeContent(rx.cta),
     tags: Array.isArray(rx.hashtags) ? rx.hashtags : (typeof rx.hashtags === 'string' ? rx.hashtags.split(/[,,#\s]+/).filter(Boolean) : [])
   });
   toast('已入库');
@@ -1574,11 +1623,50 @@ function renderCandidates() {
   if (_candFilter && _candFilter !== 'all') rows = arr.filter(c => c.status === _candFilter);
 
   const list = $('candList');
-  if (rows.length === 0) {
-    list.innerHTML = '<div class="cand-empty">还没有候选内容。先去 🟧 热点→爆款 跑一次 Agent 1，跑完会自动批量推 5 条到本池。</div>';
+  console.log('[候选池 DEBUG] arr.length=' + arr.length + ' rows.length=' + rows.length + ' list元素=' + (list ? 'ok tagName=' + list.tagName + ' id=' + list.id : 'NULL') + ' panel-cand.active=' + ($('panel-cand') ? $('panel-cand').classList.contains('active') : '?'));
+  if (!list) {
+    console.error('[候选池 DEBUG] 致命：找不到 candList 元素');
     return;
   }
-  list.innerHTML = rows.map(renderCandidateCard).join('');
+  if (rows.length === 0) {
+    list.innerHTML = '<div class="cand-empty">还没有候选内容。先去 🟧 热点→爆款 跑一次 Agent 1，跑完会自动批量推 5 条到本池。</div>';
+    console.log('[候选池 DEBUG] rows.length=0，渲染空态');
+    return;
+  }
+  // 容错：单条数据异常时不影响其他候选渲染；把出错的卡片用红框占位提示
+  const rendered = [];
+  const errors = [];
+  rows.forEach((c, idx) => {
+    try {
+      rendered.push(renderCandidateCard(c));
+    } catch (e) {
+      errors.push({ idx, id: c.id, title: c.title, msg: e.message, stack: (e.stack || '').split('\n').slice(0, 3).join('\n') });
+      rendered.push(
+        '<div class="cand-card rejected" style="border-left:4px solid var(--red);">' +
+          '<div class="head"><div class="ttl">⚠️ 渲染失败 #' + idx + '：' + escapeHtml(c.title || '(无标题)') + '</div>' +
+          '<span class="badge rejected">✗ 异常</span></div>' +
+          '<div class="src">📡 ' + escapeHtml((c.source || '未知') + ' · id=' + (c.id || '?')) + '</div>' +
+          '<div class="decision-note" style="border-left-color:var(--red);"><b>错误：</b>' + escapeHtml(e.message) + '</div>' +
+        '</div>'
+      );
+    }
+  });
+  console.log('[候选池 DEBUG] rendered.length=' + rendered.length + ' 首项长度=' + (rendered[0] || '').length);
+  list.innerHTML = rendered.join('');
+  console.log('[候选池 DEBUG] 写入完成 list.children.length=' + list.children.length + ' innerHTML.length=' + list.innerHTML.length);
+  if (errors.length) {
+    console.error('[候选池 DEBUG] ' + errors.length + '/' + rows.length + ' 渲染失败：', errors);
+  }
+  // 调试条：把内部状态写到面板里（用户截图即可诊断）
+  const dbg = $('candDebug');
+  if (dbg) {
+    dbg.innerHTML = '🔍 DEBUG · arr=' + arr.length + ' · rows=' + rows.length + ' · rendered=' + rendered.length +
+      ' · innerHTML.length=' + list.innerHTML.length +
+      ' · panel.classList=' + ($('panel-cand') ? Array.from($('panel-cand').classList).join('+') : '?') +
+      ' · _candFilter=' + (typeof _candFilter !== 'undefined' ? _candFilter : '(未定义)') +
+      ' · list.children.length=' + list.children.length +
+      ' · list.offsetHeight=' + (list.offsetHeight || 0) + 'px';
+  }
 }
 function renderCandidateCard(c) {
   const sc = c.scores || {};
